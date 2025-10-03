@@ -2068,3 +2068,8 @@ hipError_t hipKernelGetParamInfo(hipKernel_t kernel, size_t paramIndex, size_t* 
   return hip::GetHipDispatchTable()->hipKernelGetParamInfo_fn(kernel, paramIndex, paramOffset,
                                                               paramSize);
 }
+hipError_t hipMipmappedArrayGetMemoryRequirements(hipArrayMemoryRequirements* memoryRequirements,
+                                                  hipMipmappedArray_t mipmap, hipDevice_t device) {
+  return hip::GetHipDispatchTable()->hipMipmappedArrayGetMemoryRequirements_fn(memoryRequirements,
+                                                                               mipmap, device);
+}

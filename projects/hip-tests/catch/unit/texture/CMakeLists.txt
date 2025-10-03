@@ -148,6 +148,7 @@ set(TEST_SRC
     hipTexRefSetGetMipmapLevelBias.cc
     hipTexRefSetGetMipmapLevelClamp.cc
     hipTexRefSetGetMipmappedArray.cc
+    hipMipmappedArrayGetMemoryRequirements.cc
 )
 endif()
 
