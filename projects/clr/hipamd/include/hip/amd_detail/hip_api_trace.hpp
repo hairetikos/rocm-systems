@@ -1113,9 +1113,12 @@ typedef hipError_t (*t_hipKernelGetLibrary)(hipLibrary_t* library, hipKernel_t k
 typedef hipError_t (*t_hipKernelGetName)(const char** name, hipKernel_t kernel);
 typedef hipError_t (*t_hipGetProcAddress_spt)(const char* symbol, void** pfn, int hipVersion, uint64_t flags,
                                               hipDriverProcAddressQueryResult* symbolStatus);
-
 typedef hipError_t (*t_hipKernelGetParamInfo)(hipKernel_t kernel, size_t paramIndex,
                                               size_t* paramOffset, size_t* paramSize);
+typedef hipError_t (*t_hipMemSetMemPool)(hipMemLocation* location, hipMemAllocationType type,
+                                         hipMemPool_t pool);
+typedef hipError_t (*t_hipMemGetMemPool)(hipMemPool_t* pool, hipMemLocation* location,
+                                         hipMemAllocationType type);
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   // HIP_COMPILER_API_TABLE_STEP_VERSION == 0
@@ -1692,6 +1695,8 @@ struct HipDispatchTable {
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 16
   t_hipStreamCopyAttributes hipStreamCopyAttributes_fn;
+  t_hipMemSetMemPool hipMemSetMemPool_fn;
+  t_hipMemGetMemPool hipMemGetMemPool_fn;
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 17
   t_hipLibraryEnumerateKernels hipLibraryEnumerateKernels_fn;

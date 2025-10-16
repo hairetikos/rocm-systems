@@ -8,6 +8,8 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 * New HIP APIs
     - `hipKernelGetParamInfo`   returns the offset and size of a kernel parameter
+    - `hipMemSetMemPool`        Sets the current memory pool for a memory location and allocation type
+    - `hipMemGetMemPool`        Gets the current memory pool for a memory location and of a particular allocation type
 
 * New HIP supports
     - `grid_group::block_rank()` returns the rank of the block in the calling thread
