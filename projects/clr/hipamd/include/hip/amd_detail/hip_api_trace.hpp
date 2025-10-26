@@ -63,7 +63,7 @@
 #define HIP_API_TABLE_STEP_VERSION 0
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
 #define HIP_TOOLS_API_TABLE_STEP_VERSION 0
-#define HIP_RUNTIME_API_TABLE_STEP_VERSION 20
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 21
 
 // HIP API interface
 // HIP compiler dispatch functions
@@ -1695,8 +1695,6 @@ struct HipDispatchTable {
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 16
   t_hipStreamCopyAttributes hipStreamCopyAttributes_fn;
-  t_hipMemSetMemPool hipMemSetMemPool_fn;
-  t_hipMemGetMemPool hipMemGetMemPool_fn;
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 17
   t_hipLibraryEnumerateKernels hipLibraryEnumerateKernels_fn;
@@ -1712,8 +1710,12 @@ struct HipDispatchTable {
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 20
   t_hipKernelGetParamInfo hipKernelGetParamInfo_fn;
 
-  // DO NOT EDIT ABOVE!
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 21
+  t_hipMemSetMemPool hipMemSetMemPool_fn;
+  t_hipMemGetMemPool hipMemGetMemPool_fn;
+
+  // DO NOT EDIT ABOVE!
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 22
 
   // ******************************************************************************************* //
   //
