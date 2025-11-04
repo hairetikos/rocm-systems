@@ -417,6 +417,7 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
     return hipErrorInvalidValue;
   }
 
+  // Create a mapping from each operation index to its corresponding location index.
   std::vector<size_t> op_to_loc_mapping(count);
   size_t current_loc = 0;
   for (size_t op = 0; op < count; op++) {
