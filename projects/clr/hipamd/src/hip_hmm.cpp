@@ -427,64 +427,67 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
     op_to_loc_mapping[op] = current_loc;
   }
 
-  std::vector<const void*> dev_ptrs_vec(count);
-  std::vector<size_t> sizes_vec(count);
-  std::vector<uint8_t> cpu_access_vec(count);
-  std::vector<int> target_devices_vec(count);
-  std::vector<amd::Device*> devices_vec(count);
+  amd::SvmPrefetchBatchAsyncCommand* command = nullptr;
+  {
+    std::vector<const void*> dev_ptrs_vec(count);
+    std::vector<size_t> sizes_vec(count);
+    std::vector<uint8_t> cpu_access_vec(count);
+    std::vector<int> target_devices_vec(count);
+    std::vector<amd::Device*> devices_vec(count);
 
-  // Validate and prepare each operation
-  for (size_t op_idx = 0; op_idx < count; op_idx++) {
-    const void* dev_ptr = dev_ptrs[op_idx];
-    size_t size = sizes[op_idx];
+    // Validate and prepare each operation
+    for (size_t op_idx = 0; op_idx < count; op_idx++) {
+      const void* dev_ptr = dev_ptrs[op_idx];
+      size_t size = sizes[op_idx];
 
-    if (size == 0) {
-      return hipErrorInvalidValue;
-    }
-
-    if (dev_ptr == nullptr) {
-      return hipErrorInvalidValue;
-    }
-
-    size_t loc_idx = op_to_loc_mapping[op_idx];
-    hipMemLocation location = prefetch_locs[loc_idx];
-
-    size_t offset = 0;
-    amd::Memory* mem_obj = getMemoryObject(dev_ptr, offset);
-    if ((mem_obj != nullptr) && (size > (mem_obj->getSize() - offset))) {
-      return hipErrorInvalidValue;
-    }
-
-    const bool is_device = (location.type == hipMemLocationTypeDevice);
-    int target_device = is_device ? location.id : hipCpuDeviceId;
-
-    amd::Device* dev = nullptr;
-    if (is_device) {
-      if (static_cast<size_t>(target_device) >= g_devices.size()) {
-        return hipErrorInvalidDevice;
-      }
-      dev = g_devices[target_device]->devices()[0];
-      // For non-managed memory prefetching to device, device must support pageable memory access
-      // Managed memory is identified by CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR flags
-      const bool is_managed_memory =
-          (mem_obj != nullptr) &&
-          (mem_obj->getMemFlags() & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR));
-      if (!is_managed_memory && !dev->info().hmmCpuMemoryAccessible_) {
+      if (size == 0) {
         return hipErrorInvalidValue;
       }
+
+      if (dev_ptr == nullptr) {
+        return hipErrorInvalidValue;
+      }
+
+      size_t loc_idx = op_to_loc_mapping[op_idx];
+      hipMemLocation location = prefetch_locs[loc_idx];
+
+      size_t offset = 0;
+      amd::Memory* mem_obj = getMemoryObject(dev_ptr, offset);
+      if ((mem_obj != nullptr) && (size > (mem_obj->getSize() - offset))) {
+        return hipErrorInvalidValue;
+      }
+
+      const bool is_device = (location.type == hipMemLocationTypeDevice);
+      int target_device = is_device ? location.id : hipCpuDeviceId;
+
+      amd::Device* dev = nullptr;
+      if (is_device) {
+        if (static_cast<size_t>(target_device) >= g_devices.size()) {
+          return hipErrorInvalidDevice;
+        }
+        dev = g_devices[target_device]->devices()[0];
+        // For non-managed memory prefetching to device, device must support pageable memory access
+        // Managed memory is identified by CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR flags
+        const bool is_managed_memory =
+            (mem_obj != nullptr) &&
+            (mem_obj->getMemFlags() & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR));
+        if (!is_managed_memory && !dev->info().hmmCpuMemoryAccessible_) {
+          return hipErrorInvalidValue;
+        }
+      }
+
+      dev_ptrs_vec[op_idx] = dev_ptr;
+      sizes_vec[op_idx] = size;
+      cpu_access_vec[op_idx] = !is_device ? 1 : 0;
+      target_devices_vec[op_idx] = target_device;
+      devices_vec[op_idx] = dev;
     }
 
-    dev_ptrs_vec[op_idx] = dev_ptr;
-    sizes_vec[op_idx] = size;
-    cpu_access_vec[op_idx] = !is_device ? 1 : 0;
-    target_devices_vec[op_idx] = target_device;
-    devices_vec[op_idx] = dev;
+    amd::Command::EventWaitList wait_list;
+    command = new amd::SvmPrefetchBatchAsyncCommand(
+        *hip_stream, wait_list, std::move(dev_ptrs_vec), std::move(sizes_vec),
+        std::move(cpu_access_vec), std::move(target_devices_vec), std::move(devices_vec));
   }
-
-  amd::Command::EventWaitList wait_list;
-  amd::SvmPrefetchBatchAsyncCommand* command = new amd::SvmPrefetchBatchAsyncCommand(
-      *hip_stream, wait_list, std::move(dev_ptrs_vec), std::move(sizes_vec),
-      std::move(cpu_access_vec), std::move(target_devices_vec), std::move(devices_vec));
   if (command == nullptr) {
     return hipErrorOutOfMemory;
   }
