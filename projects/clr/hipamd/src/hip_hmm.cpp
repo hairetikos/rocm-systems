@@ -28,6 +28,30 @@
 
 namespace hip {
 
+static bool AllDevicesSupport(std::function<bool(const amd::device::Info&)> check) {
+  for (const auto& hip_device : g_devices) {
+    if (hip_device == nullptr) {
+      continue;
+    }
+    if (!check(hip_device->devices()[0]->info())) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool AllDevicesSupportPageableMemoryAccess() {
+  return AllDevicesSupport([](const amd::device::Info& info) {
+    return info.hmmCpuMemoryAccessible_;
+  });
+}
+
+static bool AllDevicesSupportHmm() {
+  return AllDevicesSupport([](const amd::device::Info& info) {
+    return info.hmmSupported_;
+  });
+}
+
 // Forward declaraiton of a function
 hipError_t ihipMallocManaged(void** ptr, size_t size, size_t align = 0, bool use_host_ptr = 0);
 hipError_t ihipMemPrefetchAsync(const void* dev_ptr, size_t count, hipMemLocation location,
@@ -410,6 +434,10 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
     }
   }
 
+  if (!AllDevicesSupportHmm()) {
+    return hipErrorInvalidValue;
+  }
+
   getStreamPerThread(stream);
 
   hip::Stream* hip_stream = hip::getStream(stream);
@@ -427,6 +455,7 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
     op_to_loc_mapping[op] = current_loc;
   }
 
+  bool requires_pageable_support = false;
   amd::SvmPrefetchBatchAsyncCommand* command = nullptr;
   {
     std::vector<const void*> dev_ptrs_vec(count);
@@ -457,6 +486,12 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
         return hipErrorInvalidValue;
       }
 
+      const bool is_managed_memory =
+          (mem_obj != nullptr) &&
+          (mem_obj->getMemFlags() & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR));
+
+      requires_pageable_support |= !is_managed_memory;
+
       const bool is_device = (location.type == hipMemLocationTypeDevice);
       int target_device = is_device ? location.id : hipCpuDeviceId;
 
@@ -466,14 +501,6 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
           return hipErrorInvalidDevice;
         }
         dev = g_devices[target_device]->devices()[0];
-        // For non-managed memory prefetching to device, device must support pageable memory access
-        // Managed memory is identified by CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR flags
-        const bool is_managed_memory =
-            (mem_obj != nullptr) &&
-            (mem_obj->getMemFlags() & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR));
-        if (!is_managed_memory && !dev->info().hmmCpuMemoryAccessible_) {
-          return hipErrorInvalidValue;
-        }
       }
 
       dev_ptrs_vec[op_idx] = dev_ptr;
@@ -481,6 +508,10 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
       cpu_access_vec[op_idx] = !is_device ? 1 : 0;
       target_devices_vec[op_idx] = target_device;
       devices_vec[op_idx] = dev;
+    }
+
+    if (requires_pageable_support && !AllDevicesSupportPageableMemoryAccess()) {
+      return hipErrorInvalidValue;
     }
 
     amd::Command::EventWaitList wait_list;
