@@ -1912,7 +1912,12 @@ class SvmPrefetchBatchAsyncCommand : public Command {
         cpu_access_(std::move(cpu_access)),
         target_devices_(std::move(target_devices)),
         devices_(std::move(devices)),
-        count_(dev_ptrs_.size()) {}
+        count_(dev_ptrs_.size()) {
+    assert(sizes_.size() == count_ && "sizes vector must match dev_ptrs size");
+    assert(cpu_access_.size() == count_ && "cpu_access vector must match dev_ptrs size");
+    assert(target_devices_.size() == count_ && "target_devices vector must match dev_ptrs size");
+    assert(devices_.size() == count_ && "devices vector must match dev_ptrs size");
+  }
 
   virtual void submit(device::VirtualDevice& device) { device.submitSvmPrefetchBatchAsync(*this); }
 
