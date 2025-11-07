@@ -2476,6 +2476,9 @@ void VirtualGPU::submitSvmPrefetchBatchAsync(amd::SvmPrefetchBatchAsyncCommand& 
   auto wait_events = Barriers().WaitingSignal(HwQueueEngine::Unknown);
   hsa_signal_t active = Barriers().ActiveSignal(cmd.count(), timestamp_);
 
+  const bool enable_system_memory =
+      (dev().settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory) != 0;
+
   for (size_t i = 0; i < cmd.count(); i++) {
     const void* dev_ptr = cmd.dev_ptrs()[i];
     size_t count = cmd.sizes()[i];
@@ -2483,10 +2486,9 @@ void VirtualGPU::submitSvmPrefetchBatchAsync(amd::SvmPrefetchBatchAsyncCommand& 
     int target_device = cmd.target_devices()[i];
     amd::Device* target_dev = cmd.devices()[i];
 
-    hsa_agent_t agent =
-        (cpu_access || (dev().settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory))
-            ? dev().getCpuAgent(target_device)
-            : (static_cast<const roc::Device*>(target_dev))->getBackendDevice();
+    hsa_agent_t agent = (cpu_access || enable_system_memory)
+                            ? dev().getCpuAgent(target_device)
+                            : (static_cast<const roc::Device*>(target_dev))->getBackendDevice();
 
     hsa_status_t status = Hsa::svm_prefetch_async(const_cast<void*>(dev_ptr), count, agent,
                                                   wait_events.size(), wait_events.data(), active);

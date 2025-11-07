@@ -28,29 +28,23 @@
 
 namespace hip {
 
-static bool AllDevicesSupport(std::function<bool(const amd::device::Info&)> check) {
+static bool AllDevicesSupportPageableMemoryAccess() {
   for (const auto& hip_device : g_devices) {
-    if (hip_device == nullptr) {
-      continue;
+    if (!hip_device->devices()[0]->info().hmmCpuMemoryAccessible_) {
+      return false;
     }
-    if (!check(hip_device->devices()[0]->info())) {
+  }
+  return true;
+}
+static bool AllDevicesSupportHmm() {
+  for (const auto& hip_device : g_devices) {
+    if (!hip_device->devices()[0]->info().hmmSupported_) {
       return false;
     }
   }
   return true;
 }
 
-static bool AllDevicesSupportPageableMemoryAccess() {
-  return AllDevicesSupport([](const amd::device::Info& info) {
-    return info.hmmCpuMemoryAccessible_;
-  });
-}
-
-static bool AllDevicesSupportHmm() {
-  return AllDevicesSupport([](const amd::device::Info& info) {
-    return info.hmmSupported_;
-  });
-}
 
 // Forward declaraiton of a function
 hipError_t ihipMallocManaged(void** ptr, size_t size, size_t align = 0, bool use_host_ptr = 0);
