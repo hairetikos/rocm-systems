@@ -1319,7 +1319,7 @@ hsaKmtMemHandleFree(
 
 HSAKMT_STATUS
 HSAKMTAPI
-hsaKmtMemoryGetCpuAddress(
+hsaKmtMemoryGetCpuAddr(
   HsaAMDGPUDeviceHandle DeviceHandle,
   HsaMemoryObjectHandle MemoryHandle,
   HSAint32* fd, // OUT
