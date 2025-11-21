@@ -23,7 +23,6 @@ THE SOFTWARE.
 #include <utils.hh>
 
 #include <algorithm>
-#include <cmath>
 #include <array>
 
 namespace {
@@ -91,16 +90,16 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_SingleOperationSingleLocation") {
   std::array<void*, 1> managed_ptrs = {managed_memory.ptr()};
   std::array<size_t, 1> buffer_sizes = {kTestBufferBytes};
 
-  std::array<hipMemLocation, 1> prefetch_locations;
-  prefetch_locations[0].type = hipMemLocationTypeDevice;
-  prefetch_locations[0].id = device;
+  std::array<hipMemLocation, 1> locations;
+  locations[0].type = hipMemLocationTypeDevice;
+  locations[0].id = device;
 
-  std::array<size_t, 1> prefetch_location_indices = {0};
+  std::array<size_t, 1> location_indices = {0};
   constexpr unsigned long long flags = 0;
 
   HIP_CHECK(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
-                                     prefetch_locations.data(), prefetch_location_indices.data(),
-                                     prefetch_locations.size(), flags, stream_guard.stream()));
+                                     locations.data(), location_indices.data(), locations.size(),
+                                     flags, stream_guard.stream()));
 
   HIP_CHECK(hipStreamSynchronize(stream_guard.stream()));
 
@@ -133,70 +132,64 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_LocationDistribution") {
            {DistributionPattern::MixedGrouped, 6, "mixed grouped locations"}}));
 
   DYNAMIC_SECTION(description) {
-    std::vector<LinearAllocGuard<int>> managed_buffers;
-    managed_buffers.reserve(num_operations);
-    for (size_t i = 0; i < num_operations; ++i) {
-      managed_buffers.emplace_back(LinearAllocs::hipMallocManaged, kTestBufferBytes);
-    }
-
     std::vector<void*> managed_ptrs(num_operations);
     std::vector<size_t> buffer_sizes(num_operations, kTestBufferBytes);
 
     for (size_t op = 0; op < num_operations; op++) {
-      managed_ptrs[op] = managed_buffers[op].ptr();
-      std::fill_n(managed_buffers[op].ptr(), kTestBufferElements, kTestValueBase);
+      HIP_CHECK(hipMallocManaged(&managed_ptrs[op], kTestBufferBytes));
+      std::fill_n(static_cast<int*>(managed_ptrs[op]), kTestBufferElements, kTestValueBase);
     }
 
     StreamGuard stream_guard(Streams::created);
 
-    std::vector<hipMemLocation> prefetch_locations;
-    std::vector<size_t> prefetch_location_indices;
+    std::vector<hipMemLocation> locations;
+    std::vector<size_t> location_indices;
 
     switch (pattern) {
       case DistributionPattern::AllSame:
-        prefetch_locations.resize(1);
-        prefetch_locations[0].type = hipMemLocationTypeDevice;
-        prefetch_locations[0].id = device;
-        prefetch_location_indices = {0};
+        locations.resize(1);
+        locations[0].type = hipMemLocationTypeDevice;
+        locations[0].id = device;
+        location_indices = {0};
         break;
 
       case DistributionPattern::EachDifferent:
-        prefetch_locations.resize(num_operations);
-        prefetch_location_indices.resize(num_operations);
+        locations.resize(num_operations);
+        location_indices.resize(num_operations);
         for (size_t i = 0; i < num_operations; i++) {
           if (i % 2 == 0) {
-            prefetch_locations[i].type = hipMemLocationTypeDevice;
-            prefetch_locations[i].id = device;
+            locations[i].type = hipMemLocationTypeDevice;
+            locations[i].id = device;
           } else {
-            prefetch_locations[i].type = hipMemLocationTypeHost;
-            prefetch_locations[i].id = 0;
+            locations[i].type = hipMemLocationTypeHost;
+            locations[i].id = 0;
           }
-          prefetch_location_indices[i] = i;
+          location_indices[i] = i;
         }
         break;
 
       case DistributionPattern::MixedGrouped:
-        prefetch_locations.resize(2);
-        prefetch_locations[0].type = hipMemLocationTypeDevice;
-        prefetch_locations[0].id = device;
-        prefetch_locations[1].type = hipMemLocationTypeHost;
-        prefetch_locations[1].id = 0;
-        prefetch_location_indices = {0, 3};
+        locations.resize(2);
+        locations[0].type = hipMemLocationTypeDevice;
+        locations[0].id = device;
+        locations[1].type = hipMemLocationTypeHost;
+        locations[1].id = 0;
+        location_indices = {0, 3};
         break;
     }
 
     constexpr unsigned long long flags = 0;
     HIP_CHECK(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), num_operations,
-                                       prefetch_locations.data(), prefetch_location_indices.data(),
-                                       prefetch_locations.size(), flags, stream_guard.stream()));
+                                       locations.data(), location_indices.data(), locations.size(),
+                                       flags, stream_guard.stream()));
 
     HIP_CHECK(hipStreamSynchronize(stream_guard.stream()));
 
     for (size_t op = 0; op < num_operations; op++) {
       int last_prefetch_location = -1;
       HIP_CHECK(hipMemRangeGetAttribute(&last_prefetch_location, sizeof(int),
-                                        hipMemRangeAttributeLastPrefetchLocation,
-                                        managed_buffers[op].ptr(), kTestBufferBytes));
+                                        hipMemRangeAttributeLastPrefetchLocation, managed_ptrs[op],
+                                        kTestBufferBytes));
 
       int expected_device = -1;
       switch (pattern) {
@@ -213,10 +206,14 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_LocationDistribution") {
       REQUIRE(last_prefetch_location == expected_device);
 
       if (expected_device == device) {
-        VerifyDataOnDevice(managed_buffers[op].ptr(), stream_guard.stream());
+        VerifyDataOnDevice(static_cast<int*>(managed_ptrs[op]), stream_guard.stream());
       } else {
-        ArrayFindIfNot(managed_buffers[op].ptr(), kTestValueBase, kTestBufferElements);
+        ArrayFindIfNot(static_cast<int*>(managed_ptrs[op]), kTestValueBase, kTestBufferElements);
       }
+    }
+
+    for (auto ptr : managed_ptrs) {
+      HIP_CHECK(hipFree(ptr));
     }
   }
 }
@@ -238,7 +235,7 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_RoundTripDataIntegrity") {
 
   std::array<void*, 1> managed_ptrs = {managed_memory.ptr()};
   std::array<size_t, 1> buffer_sizes = {kTestBufferBytes};
-  std::array<size_t, 1> prefetch_location_indices = {0};
+  std::array<size_t, 1> location_indices = {0};
   constexpr unsigned long long flags = 0;
 
   std::array<hipMemLocation, 1> device_location;
@@ -246,9 +243,8 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_RoundTripDataIntegrity") {
   device_location[0].id = device;
 
   HIP_CHECK(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
-                                     device_location.data(), prefetch_location_indices.data(),
-                                     prefetch_location_indices.size(), flags,
-                                     stream_guard.stream()));
+                                     device_location.data(), location_indices.data(),
+                                     location_indices.size(), flags, stream_guard.stream()));
   HIP_CHECK(hipStreamSynchronize(stream_guard.stream()));
   VerifyDataOnDevice(managed_memory.ptr(), stream_guard.stream());
 
@@ -263,9 +259,8 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_RoundTripDataIntegrity") {
   host_location[0].id = 0;
 
   HIP_CHECK(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
-                                     host_location.data(), prefetch_location_indices.data(),
-                                     prefetch_location_indices.size(), flags,
-                                     stream_guard.stream()));
+                                     host_location.data(), location_indices.data(),
+                                     location_indices.size(), flags, stream_guard.stream()));
   HIP_CHECK(hipStreamSynchronize(stream_guard.stream()));
   ArrayFindIfNot(managed_memory.ptr(), kTestValueBase, kTestBufferElements);
 
@@ -275,9 +270,8 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_RoundTripDataIntegrity") {
   REQUIRE(last_prefetch_location == hipCpuDeviceId);
 
   HIP_CHECK(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
-                                     device_location.data(), prefetch_location_indices.data(),
-                                     prefetch_location_indices.size(), flags,
-                                     stream_guard.stream()));
+                                     device_location.data(), location_indices.data(),
+                                     location_indices.size(), flags, stream_guard.stream()));
   HIP_CHECK(hipStreamSynchronize(stream_guard.stream()));
   VerifyDataOnDevice(managed_memory.ptr(), stream_guard.stream());
 
@@ -299,60 +293,56 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_NullAndInvalidPointers") {
   LinearAllocGuard<int> managed_memory(LinearAllocs::hipMallocManaged, kTestBufferBytes);
   StreamGuard stream_guard(Streams::created);
 
-  std::array<void*, 1> valid_managed_ptrs = {managed_memory.ptr()};
-  std::array<size_t, 1> valid_sizes = {kTestBufferBytes};
+  std::array<void*, 1> managed_ptrs = {managed_memory.ptr()};
+  std::array<size_t, 1> buffer_sizes = {kTestBufferBytes};
 
-  std::array<hipMemLocation, 1> valid_locations;
-  valid_locations[0].type = hipMemLocationTypeDevice;
-  valid_locations[0].id = device;
+  std::array<hipMemLocation, 1> locations;
+  locations[0].type = hipMemLocationTypeDevice;
+  locations[0].id = device;
 
-  std::array<size_t, 1> valid_indices = {0};
+  std::array<size_t, 1> location_indices = {0};
   constexpr unsigned long long flags = 0;
 
   SECTION("NULL device pointers array") {
-    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(nullptr, valid_sizes.data(), valid_sizes.size(),
-                                             valid_locations.data(), valid_indices.data(),
-                                             valid_locations.size(), flags, stream_guard.stream()),
+    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(nullptr, buffer_sizes.data(), buffer_sizes.size(),
+                                             locations.data(), location_indices.data(),
+                                             locations.size(), flags, stream_guard.stream()),
                     hipErrorInvalidValue);
   }
 
   SECTION("NULL sizes array") {
-    HIP_CHECK_ERROR(
-        hipMemPrefetchBatchAsync(valid_managed_ptrs.data(), nullptr, valid_managed_ptrs.size(),
-                                 valid_locations.data(), valid_indices.data(),
-                                 valid_locations.size(), flags, stream_guard.stream()),
-        hipErrorInvalidValue);
+    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(managed_ptrs.data(), nullptr, managed_ptrs.size(),
+                                             locations.data(), location_indices.data(),
+                                             locations.size(), flags, stream_guard.stream()),
+                    hipErrorInvalidValue);
   }
 
   SECTION("NULL prefetch locations array") {
-    HIP_CHECK_ERROR(
-        hipMemPrefetchBatchAsync(valid_managed_ptrs.data(), valid_sizes.data(),
-                                 valid_managed_ptrs.size(), nullptr, valid_indices.data(),
-                                 valid_locations.size(), flags, stream_guard.stream()),
-        hipErrorInvalidValue);
+    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(),
+                                             managed_ptrs.size(), nullptr, location_indices.data(),
+                                             locations.size(), flags, stream_guard.stream()),
+                    hipErrorInvalidValue);
   }
 
   SECTION("NULL prefetch location indices array") {
-    HIP_CHECK_ERROR(
-        hipMemPrefetchBatchAsync(valid_managed_ptrs.data(), valid_sizes.data(),
-                                 valid_managed_ptrs.size(), valid_locations.data(), nullptr,
-                                 valid_locations.size(), flags, stream_guard.stream()),
-        hipErrorInvalidValue);
+    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(),
+                                             managed_ptrs.size(), locations.data(), nullptr,
+                                             locations.size(), flags, stream_guard.stream()),
+                    hipErrorInvalidValue);
   }
 
   SECTION("Freed memory pointer") {
-    int* temp_ptr = nullptr;
-    HIP_CHECK(hipMallocManaged(&temp_ptr, kTestBufferBytes));
-    void* freed_ptr = temp_ptr;
-    HIP_CHECK(hipFree(temp_ptr));
+    int* freed_ptr = nullptr;
+    HIP_CHECK(hipMallocManaged(&freed_ptr, kTestBufferBytes));
+    HIP_CHECK(hipFree(freed_ptr));
 
     std::array<void*, 1> freed_ptrs = {freed_ptr};
     std::array<size_t, 1> freed_sizes = {kTestBufferBytes};
 
-    HIP_CHECK_ERROR(
-        hipMemPrefetchBatchAsync(freed_ptrs.data(), freed_sizes.data(), 1, valid_locations.data(),
-                                 valid_indices.data(), 1, flags, stream_guard.stream()),
-        hipErrorInvalidValue);
+    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(
+                        freed_ptrs.data(), freed_sizes.data(), freed_ptrs.size(), locations.data(),
+                        location_indices.data(), locations.size(), flags, stream_guard.stream()),
+                    hipErrorInvalidValue);
   }
 }
 
@@ -367,28 +357,22 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_IndexArrayConstraints") {
 
   constexpr size_t num_operations = 3;
 
-  std::vector<LinearAllocGuard<int>> managed_buffers;
-  managed_buffers.emplace_back(LinearAllocs::hipMallocManaged, kTestBufferBytes);
-  managed_buffers.emplace_back(LinearAllocs::hipMallocManaged, kTestBufferBytes);
-  managed_buffers.emplace_back(LinearAllocs::hipMallocManaged, kTestBufferBytes);
-
   std::vector<void*> managed_ptrs(num_operations);
-  std::vector<size_t> buffer_sizes(num_operations);
+  std::vector<size_t> buffer_sizes(num_operations, kTestBufferBytes);
 
   for (size_t op = 0; op < num_operations; op++) {
-    managed_ptrs[op] = managed_buffers[op].ptr();
-    buffer_sizes[op] = kTestBufferBytes;
+    HIP_CHECK(hipMallocManaged(&managed_ptrs[op], kTestBufferBytes));
   }
 
   StreamGuard stream_guard(Streams::created);
 
-  std::vector<hipMemLocation> prefetch_locations(num_operations);
-  prefetch_locations[0].type = hipMemLocationTypeDevice;
-  prefetch_locations[0].id = device;
-  prefetch_locations[1].type = hipMemLocationTypeHost;
-  prefetch_locations[1].id = 0;
-  prefetch_locations[2].type = hipMemLocationTypeHostNumaCurrent;
-  prefetch_locations[2].id = 0;
+  std::vector<hipMemLocation> locations(num_operations);
+  locations[0].type = hipMemLocationTypeDevice;
+  locations[0].id = device;
+  locations[1].type = hipMemLocationTypeHost;
+  locations[1].id = 0;
+  locations[2].type = hipMemLocationTypeHostNumaCurrent;
+  locations[2].id = 0;
 
   constexpr unsigned long long flags = 0;
 
@@ -396,7 +380,7 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_IndexArrayConstraints") {
     std::vector<size_t> invalid_indices = {1, 2, 0};
 
     HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), 1,
-                                             prefetch_locations.data(), invalid_indices.data(),
+                                             locations.data(), invalid_indices.data(),
                                              invalid_indices.size(), flags, stream_guard.stream()),
                     hipErrorInvalidValue);
   }
@@ -406,8 +390,8 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_IndexArrayConstraints") {
 
     HIP_CHECK_ERROR(
         hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), num_operations,
-                                 prefetch_locations.data(), invalid_indices.data(),
-                                 invalid_indices.size(), flags, stream_guard.stream()),
+                                 locations.data(), invalid_indices.data(), invalid_indices.size(),
+                                 flags, stream_guard.stream()),
         hipErrorInvalidValue);
   }
 
@@ -416,9 +400,13 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_IndexArrayConstraints") {
 
     HIP_CHECK_ERROR(
         hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), num_operations,
-                                 prefetch_locations.data(), invalid_indices.data(),
-                                 invalid_indices.size(), flags, stream_guard.stream()),
+                                 locations.data(), invalid_indices.data(), invalid_indices.size(),
+                                 flags, stream_guard.stream()),
         hipErrorInvalidValue);
+  }
+
+  for (auto ptr : managed_ptrs) {
+    HIP_CHECK(hipFree(ptr));
   }
 }
 
@@ -435,77 +423,77 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_ParameterValidation") {
   LinearAllocGuard<int> managed_memory(LinearAllocs::hipMallocManaged, kTestBufferBytes);
   StreamGuard stream_guard(Streams::created);
 
-  std::array<void*, 2> valid_managed_ptrs = {managed_memory.ptr(), managed_memory.ptr()};
-  std::array<size_t, 2> valid_sizes = {kTestBufferBytes, kTestBufferBytes};
+  std::array<void*, 2> managed_ptrs = {managed_memory.ptr(), managed_memory.ptr()};
+  std::array<size_t, 2> buffer_sizes = {kTestBufferBytes, kTestBufferBytes};
 
-  std::array<hipMemLocation, 2> valid_locations;
-  valid_locations[0].type = hipMemLocationTypeDevice;
-  valid_locations[0].id = device;
-  valid_locations[1].type = hipMemLocationTypeHost;
-  valid_locations[1].id = 0;
+  std::array<hipMemLocation, 2> locations;
+  locations[0].type = hipMemLocationTypeDevice;
+  locations[0].id = device;
+  locations[1].type = hipMemLocationTypeHost;
+  locations[1].id = 0;
 
-  std::array<size_t, 2> valid_indices = {0, 1};
+  std::array<size_t, 2> location_indices = {0, 1};
   constexpr unsigned long long flags = 0;
 
   SECTION("Zero operation count") {
-    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(valid_managed_ptrs.data(), valid_sizes.data(), 0,
-                                             valid_locations.data(), valid_indices.data(),
-                                             valid_locations.size(), flags, stream_guard.stream()),
+    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), 0,
+                                             locations.data(), location_indices.data(),
+                                             locations.size(), flags, stream_guard.stream()),
                     hipErrorInvalidValue);
   }
 
   SECTION("Zero location count") {
-    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(valid_managed_ptrs.data(), valid_sizes.data(),
-                                             valid_managed_ptrs.size(), valid_locations.data(),
-                                             valid_indices.data(), 0, flags, stream_guard.stream()),
+    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(
+                        managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
+                        locations.data(), location_indices.data(), 0, flags, stream_guard.stream()),
                     hipErrorInvalidValue);
   }
 
   SECTION("More locations than operations") {
-    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(valid_managed_ptrs.data(), valid_sizes.data(),
-                                             valid_managed_ptrs.size(), valid_locations.data(),
-                                             valid_indices.data(), valid_locations.size() + 1,
-                                             flags, stream_guard.stream()),
-                    hipErrorInvalidValue);
+    HIP_CHECK_ERROR(
+        hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
+                                 locations.data(), location_indices.data(), locations.size() + 1,
+                                 flags, stream_guard.stream()),
+        hipErrorInvalidValue);
   }
 
   SECTION("Size larger than allocated memory") {
-    auto oversized_sizes = valid_sizes;
+    auto oversized_sizes = buffer_sizes;
     oversized_sizes[0] = kTestBufferBytes * 10;
 
-    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(valid_managed_ptrs.data(), oversized_sizes.data(),
-                                             valid_managed_ptrs.size(), valid_locations.data(),
-                                             valid_indices.data(), valid_locations.size(), flags,
-                                             stream_guard.stream()),
-                    hipErrorInvalidValue);
+    HIP_CHECK_ERROR(
+        hipMemPrefetchBatchAsync(managed_ptrs.data(), oversized_sizes.data(), managed_ptrs.size(),
+                                 locations.data(), location_indices.data(), locations.size(), flags,
+                                 stream_guard.stream()),
+        hipErrorInvalidValue);
   }
 
   SECTION("Zero-sized range") {
-    auto zero_sizes = valid_sizes;
+    auto zero_sizes = buffer_sizes;
     zero_sizes[0] = 0;
 
-    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(valid_managed_ptrs.data(), zero_sizes.data(),
-                                             valid_managed_ptrs.size(), valid_locations.data(),
-                                             valid_indices.data(), valid_locations.size(), flags,
-                                             stream_guard.stream()),
-                    hipErrorInvalidValue);
+    HIP_CHECK_ERROR(
+        hipMemPrefetchBatchAsync(managed_ptrs.data(), zero_sizes.data(), managed_ptrs.size(),
+                                 locations.data(), location_indices.data(), locations.size(), flags,
+                                 stream_guard.stream()),
+        hipErrorInvalidValue);
   }
 
   SECTION("Non-zero flags") {
     constexpr unsigned long long invalid_flags = 1;
 
-    HIP_CHECK_ERROR(hipMemPrefetchBatchAsync(valid_managed_ptrs.data(), valid_sizes.data(),
-                                             valid_managed_ptrs.size(), valid_locations.data(),
-                                             valid_indices.data(), valid_locations.size(),
-                                             invalid_flags, stream_guard.stream()),
-                    hipErrorInvalidValue);
+    HIP_CHECK_ERROR(
+        hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
+                                 locations.data(), location_indices.data(), locations.size(),
+                                 invalid_flags, stream_guard.stream()),
+        hipErrorInvalidValue);
   }
 
   SECTION("NULL stream") {
     HIP_CHECK_ERROR(
-        hipMemPrefetchBatchAsync(valid_managed_ptrs.data(), valid_sizes.data(),
-                                 valid_managed_ptrs.size(), valid_locations.data(),
-                                 valid_indices.data(), valid_locations.size(), flags, nullptr),
+        hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
+                                 locations.data(), location_indices.data(), locations.size(), flags,
+                                 nullptr),
         hipErrorInvalidValue);
   }
 }
@@ -525,24 +513,20 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_DeviceCapabilities") {
   StreamGuard stream_guard(Streams::created);
 
   auto alloc_type = GENERATE(LinearAllocs::malloc, LinearAllocs::hipMallocManaged);
-
   LinearAllocGuard<int> memory(alloc_type, kTestBufferBytes);
 
-  std::array<void*, 1> device_ptrs = {memory.ptr()};
+  std::array<void*, 1> managed_ptrs = {memory.ptr()};
   std::array<size_t, 1> buffer_sizes = {kTestBufferBytes};
-  size_t operation_count = 1;
 
-  std::array<hipMemLocation, 1> prefetch_locations;
-  prefetch_locations[0].type = hipMemLocationTypeDevice;
-  prefetch_locations[0].id = device;
+  std::array<hipMemLocation, 1> locations;
+  locations[0].type = hipMemLocationTypeDevice;
+  locations[0].id = device;
 
-  std::array<size_t, 1> prefetch_location_indices = {0};
-  size_t num_prefetch_locations = 1;
-  unsigned long long flags = 0;
-
+  std::array<size_t, 1> location_indices = {0};
+  constexpr unsigned long long flags = 0;
   hipError_t result = hipMemPrefetchBatchAsync(
-      device_ptrs.data(), buffer_sizes.data(), operation_count, prefetch_locations.data(),
-      prefetch_location_indices.data(), num_prefetch_locations, flags, stream_guard.stream());
+      managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(), locations.data(),
+      location_indices.data(), locations.size(), flags, stream_guard.stream());
 
   auto required_attr = (alloc_type == LinearAllocs::malloc)
                            ? hipDeviceAttributePageableMemoryAccess
@@ -577,16 +561,16 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_EdgeCase_MisalignedAddresses") {
   std::array<void*, 1> managed_ptrs = {misaligned_ptr};
   std::array<size_t, 1> buffer_sizes = {1024};
 
-  std::array<hipMemLocation, 1> prefetch_locations;
-  prefetch_locations[0].type = hipMemLocationTypeDevice;
-  prefetch_locations[0].id = device;
+  std::array<hipMemLocation, 1> locations;
+  locations[0].type = hipMemLocationTypeDevice;
+  locations[0].id = device;
 
-  std::array<size_t, 1> prefetch_location_indices = {0};
+  std::array<size_t, 1> location_indices = {0};
   constexpr unsigned long long flags = 0;
 
   HIP_CHECK(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
-                                     prefetch_locations.data(), prefetch_location_indices.data(),
-                                     prefetch_locations.size(), flags, stream_guard.stream()));
+                                     locations.data(), location_indices.data(), locations.size(),
+                                     flags, stream_guard.stream()));
 
   HIP_CHECK(hipStreamSynchronize(stream_guard.stream()));
   VerifyDataOnDevice(managed_memory.ptr(), stream_guard.stream());
@@ -640,48 +624,46 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_MultiDevice") {
   const size_t num_operations = supported_devices.size();
 
   std::vector<void*> managed_ptrs(num_operations);
-  std::vector<int*> host_ptrs(num_operations);
   std::vector<size_t> buffer_sizes(num_operations, kTestBufferBytes);
 
   for (size_t op = 0; op < num_operations; op++) {
-    HIP_CHECK(hipMallocManaged(&host_ptrs[op], kTestBufferBytes));
-    managed_ptrs[op] = host_ptrs[op];
+    HIP_CHECK(hipMallocManaged(&managed_ptrs[op], kTestBufferBytes));
 
-    std::fill_n(host_ptrs[op], kTestBufferElements, kTestValueBase);
+    std::fill_n(static_cast<int*>(managed_ptrs[op]), kTestBufferElements, kTestValueBase);
   }
 
   StreamGuard stream_guard(Streams::created);
 
-  std::vector<hipMemLocation> prefetch_locations(num_operations);
-  std::vector<size_t> prefetch_location_indices(num_operations);
+  std::vector<hipMemLocation> locations(num_operations);
+  std::vector<size_t> location_indices(num_operations);
 
   for (size_t i = 0; i < num_operations; i++) {
-    prefetch_locations[i].type = hipMemLocationTypeDevice;
-    prefetch_locations[i].id = supported_devices[i];
-    prefetch_location_indices[i] = i;
+    locations[i].type = hipMemLocationTypeDevice;
+    locations[i].id = supported_devices[i];
+    location_indices[i] = i;
   }
 
-  unsigned long long flags = 0;
+  constexpr unsigned long long flags = 0;
   HIP_CHECK(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), num_operations,
-                                     prefetch_locations.data(), prefetch_location_indices.data(),
-                                     num_operations, flags, stream_guard.stream()));
+                                     locations.data(), location_indices.data(), num_operations,
+                                     flags, stream_guard.stream()));
 
   HIP_CHECK(hipStreamSynchronize(stream_guard.stream()));
 
   for (size_t op = 0; op < num_operations; op++) {
-    VerifyDataOnDevice(host_ptrs[op], stream_guard.stream());
+    VerifyDataOnDevice(static_cast<int*>(managed_ptrs[op]), stream_guard.stream());
   }
 
   // Verify that prefetch actually occurred to the correct device for each buffer
   for (size_t op = 0; op < num_operations; op++) {
     int last_prefetch_location = -1;
     HIP_CHECK(hipMemRangeGetAttribute(&last_prefetch_location, sizeof(int),
-                                      hipMemRangeAttributeLastPrefetchLocation, host_ptrs[op],
+                                      hipMemRangeAttributeLastPrefetchLocation, managed_ptrs[op],
                                       kTestBufferBytes));
     REQUIRE(last_prefetch_location == supported_devices[op]);
   }
 
   for (size_t op = 0; op < num_operations; op++) {
-    HIP_CHECK(hipFree(host_ptrs[op]));
+    HIP_CHECK(hipFree(managed_ptrs[op]));
   }
 }
