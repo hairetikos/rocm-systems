@@ -2469,39 +2469,38 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
 }
 
 // ================================================================================================
-void VirtualGPU::submitSvmPrefetchBatchAsync(amd::SvmPrefetchBatchAsyncCommand& cmd) {
+void VirtualGPU::SubmitSvmPrefetchBatchAsync(amd::SvmPrefetchBatchAsyncCommand& command) {
   amd::ScopedLock lock(execution());
-  profilingBegin(cmd);
+  profilingBegin(command);
 
   auto wait_events = Barriers().WaitingSignal(HwQueueEngine::Unknown);
-  hsa_signal_t active = Barriers().ActiveSignal(cmd.count(), timestamp_);
+  hsa_signal_t active = Barriers().ActiveSignal(command.Count(), timestamp_);
 
   const bool enable_system_memory =
       (dev().settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory) != 0;
 
-  for (size_t i = 0; i < cmd.count(); i++) {
-    const void* dev_ptr = cmd.dev_ptrs()[i];
-    size_t count = cmd.sizes()[i];
-    bool cpu_access = cmd.cpu_access()[i];
-    int target_device = cmd.target_devices()[i];
-    amd::Device* target_dev = cmd.devices()[i];
+  for (size_t i = 0; i < command.Count(); i++) {
+    const void* dev_ptr = command.DevicePointers()[i];
+    size_t size = command.Sizes()[i];
+    amd::Device* target_dev = command.TargetDevices()[i];
+    bool cpu_access = target_dev == nullptr;
 
     hsa_agent_t agent = (cpu_access || enable_system_memory)
-                            ? dev().getCpuAgent(target_device)
+                            ? dev().getCpuAgent(CpuDeviceId)
                             : (static_cast<const roc::Device*>(target_dev))->getBackendDevice();
 
-    hsa_status_t status = Hsa::svm_prefetch_async(const_cast<void*>(dev_ptr), count, agent,
+    hsa_status_t status = Hsa::svm_prefetch_async(const_cast<void*>(dev_ptr), size, agent,
                                                   wait_events.size(), wait_events.data(), active);
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-            "HSA prefetch batch async[%zu] dev_ptr=0x%zx, count=%zu, wait_event=0x%zx, "
+            "HSA prefetch batch async[%zu] dev_ptr=0x%zx, size=%zu, wait_event=0x%zx, "
             "completion_signal=0x%zx",
-            i, const_cast<void*>(dev_ptr), count,
+            i, const_cast<void*>(dev_ptr), size,
             (wait_events.size() != 0) ? wait_events[0].handle : 0, active.handle);
 
     if ((status != HSA_STATUS_SUCCESS)) {
       Barriers().ResetCurrentSignal();
-      LogError("hsa_amd_svm_prefetch_async failed in batch operation");
-      cmd.setStatus(CL_INVALID_OPERATION);
+      LogError("HSA prefetch batch async failed in batch operation");
+      command.setStatus(CL_INVALID_OPERATION);
       profilingEnd();
       return;
     }
