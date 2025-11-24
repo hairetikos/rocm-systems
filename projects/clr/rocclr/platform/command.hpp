@@ -1894,8 +1894,9 @@ class SvmPrefetchAsyncCommand : public Command {
  */
 class SvmPrefetchBatchAsyncCommand : public Command {
  public:
-  SvmPrefetchBatchAsyncCommand(HostQueue& queue, std::vector<const void*>&& dev_ptrs,
-                               std::vector<size_t>&& sizes, std::vector<amd::Device*>&& target_devices)
+  SvmPrefetchBatchAsyncCommand(HostQueue& queue, std::vector<void*>&& dev_ptrs,
+                               std::vector<size_t>&& sizes,
+                               std::vector<amd::Device*>&& target_devices)
       : Command(queue, 1),
         dev_ptrs_(std::move(dev_ptrs)),
         sizes_(std::move(sizes)),
@@ -1907,16 +1908,16 @@ class SvmPrefetchBatchAsyncCommand : public Command {
 
   virtual void submit(device::VirtualDevice& device) { device.SubmitSvmPrefetchBatchAsync(*this); }
 
-  const void** DevicePointers() const { return const_cast<const void**>(dev_ptrs_.data()); }
+  void* const* DevicePointers() const { return dev_ptrs_.data(); }
   const size_t* Sizes() const { return sizes_.data(); }
   size_t Count() const { return count_; }
   amd::Device* const* TargetDevices() const { return target_devices_.data(); }
 
  private:
-  std::vector<const void*> dev_ptrs_;  //!< Array of device pointers to memory for prefetch
-  std::vector<size_t> sizes_;          //!< Array of sizes for prefetch
+  std::vector<void*> dev_ptrs_;               //!< Array of device pointers to memory for prefetch
+  std::vector<size_t> sizes_;                 //!< Array of sizes for prefetch
   std::vector<amd::Device*> target_devices_;  //!< Array of device pointers (one per operation)
-  size_t count_;                       //!< Number of prefetch operations
+  size_t count_;                              //!< Number of prefetch operations
 };
 
 /*! \brief  A virtual map memory command.

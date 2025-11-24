@@ -496,6 +496,27 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_ParameterValidation") {
                                  nullptr),
         hipErrorInvalidValue);
   }
+
+  SECTION("Negative location.id") {
+    auto invalid_locations = locations;
+    invalid_locations[0].id = -5;
+
+    HIP_CHECK_ERROR(
+        hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
+                                 invalid_locations.data(), location_indices.data(),
+                                 invalid_locations.size(), flags, stream_guard.stream()),
+        hipErrorInvalidDevice);
+  }
+
+  SECTION("Negative location size") {
+    size_t invalid_location_size = -5;
+
+    HIP_CHECK_ERROR(
+        hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
+                                 locations.data(), location_indices.data(), invalid_location_size,
+                                 flags, stream_guard.stream()),
+        hipErrorInvalidValue);
+  }
 }
 
 /**
@@ -628,7 +649,6 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_MultiDevice") {
 
   for (size_t op = 0; op < num_operations; op++) {
     HIP_CHECK(hipMallocManaged(&managed_ptrs[op], kTestBufferBytes));
-
     std::fill_n(static_cast<int*>(managed_ptrs[op]), kTestBufferElements, kTestValueBase);
   }
 

@@ -407,7 +407,7 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
     return hipErrorInvalidValue;
   }
 
-  if ((count == 0) || (num_prefetch_locs == 0) || (num_prefetch_locs > count)) {
+  if ((count == 0) || (num_prefetch_locs <= 0) || (num_prefetch_locs > count)) {
     return hipErrorInvalidValue;
   }
 
@@ -419,11 +419,11 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
     return hipErrorInvalidValue;
   }
 
-  for (size_t i = 0; i < num_prefetch_locs; i++) {
-    if (prefetch_loc_idxs[i] >= count) {
+  for (size_t idx = 0; idx < num_prefetch_locs; idx++) {
+    if (prefetch_loc_idxs[idx] >= count) {
       return hipErrorInvalidValue;
     }
-    if (i > 0 && prefetch_loc_idxs[i] < prefetch_loc_idxs[i - 1]) {
+    if (idx > 0 && prefetch_loc_idxs[idx] < prefetch_loc_idxs[idx - 1]) {
       return hipErrorInvalidValue;
     }
   }
@@ -442,14 +442,14 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
   bool requires_pageable_support = false;
   amd::SvmPrefetchBatchAsyncCommand* command = nullptr;
   {
-    std::vector<const void*> dev_ptrs_vec(count);
+    std::vector<void*> dev_ptrs_vec(count);
     std::vector<size_t> sizes_vec(count);
     std::vector<amd::Device*> devices_vec(count);
 
     // Validate and prepare each operation
     size_t current_loc = 0;
     for (size_t op_idx = 0; op_idx < count; op_idx++) {
-      const void* dev_ptr = dev_ptrs[op_idx];
+      void* dev_ptr = dev_ptrs[op_idx];
       size_t size = sizes[op_idx];
 
       if (size == 0 || dev_ptr == nullptr) {
@@ -475,7 +475,7 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
 
       amd::Device* dev = nullptr;
       if (location.type == hipMemLocationTypeDevice) {
-        if (static_cast<size_t>(location.id) >= g_devices.size()) {
+        if (location.id < 0 || static_cast<size_t>(location.id) >= g_devices.size()) {
           return hipErrorInvalidDevice;
         }
         dev = g_devices[location.id]->devices()[0];
