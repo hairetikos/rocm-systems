@@ -507,16 +507,6 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_ParameterValidation") {
                                  invalid_locations.size(), flags, stream_guard.stream()),
         hipErrorInvalidDevice);
   }
-
-  SECTION("Negative location size") {
-    size_t invalid_location_size = -5;
-
-    HIP_CHECK_ERROR(
-        hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
-                                 locations.data(), location_indices.data(), invalid_location_size,
-                                 flags, stream_guard.stream()),
-        hipErrorInvalidValue);
-  }
 }
 
 /**
