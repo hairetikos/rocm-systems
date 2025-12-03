@@ -2891,35 +2891,26 @@ hipError_t packFillMemoryCommand(amd::Command*& command, amd::Memory* memory, si
   return hipSuccess;
 }
 
-hipError_t ihipMemset_validate(void* dst, int64_t value, size_t valueSize, size_t sizeBytes) {
+hipError_t ihipMemset_validate(amd::Memory* dstMemory, int64_t value, size_t valueSize,
+                               size_t sizeBytes) {
+  // TODO: remove duplicate check
   if (sizeBytes == 0) {
     // Skip if nothing needs filling.
     return hipSuccess;
   }
 
-  if (dst == nullptr) {
-    return hipErrorInvalidValue;
-  }
-
-  size_t offset = 0;
-  amd::Memory* memory = getMemoryObject(dst, offset);
-  if (memory == nullptr) {
-    // dst ptr is host ptr hence error
-    return hipErrorInvalidValue;
-  }
-
   // Validate Mem Access in case of VMM Memory
-  if (!memory->ValidateMemAccess(*hip::getCurrentDevice()->devices()[0], true)) {
+  if (!dstMemory->ValidateMemAccess(*hip::getCurrentDevice()->devices()[0], true)) {
     return hipErrorUnknown;
   }
 
   // In case of vmm sub object, validate using parents vaddr mem object.
-  if (memory->parent() && (memory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
-    memory = memory->parent();
+  if (dstMemory->parent() && (dstMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+    dstMemory = dstMemory->parent();
   }
 
   // Return error if sizeBytes passed to memcpy is more than the actual size allocated
-  if (sizeBytes > (memory->getSize() - offset)) {
+  if (sizeBytes > (dstMemory->getSize() - dstMemory->getOffset())) {
     return hipErrorInvalidValue;
   }
   return hipSuccess;
@@ -2959,17 +2950,14 @@ hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams) {
   return hipSuccess;
 }
 
-hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, void* dst, int64_t value,
-                             size_t valueSize, size_t sizeBytes, hip::Stream* stream) {
+hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, amd::Memory* dstMemory,
+                             int64_t value, size_t valueSize, size_t sizeBytes, hip::Stream* stream,
+                             size_t offset) {
   hipError_t hip_error = hipSuccess;
-  auto aligned_dst = amd::alignUp(reinterpret_cast<address>(dst), sizeof(uint64_t));
-  size_t offset = 0;
-  amd::Memory* memory = getMemoryObject(dst, offset);
-  size_t n_head_bytes = 0;
-  size_t n_tail_bytes = 0;
   amd::Command* command;
 
-  hip_error = packFillMemoryCommand(command, memory, offset, value, valueSize, sizeBytes, stream);
+  hip_error =
+      packFillMemoryCommand(command, dstMemory, offset, value, valueSize, sizeBytes, stream);
   commands.push_back(command);
 
   return hip_error;
@@ -2978,14 +2966,25 @@ hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, void* dst, in
 hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeBytes,
                       hipStream_t stream, bool isAsync = false) {
   hipError_t hip_error = hipSuccess;
+  // TODO: look at removing do while loop and return error directly
   do {
     // Nothing to do, fill size is 0. Returns hipSuccess.
     if (sizeBytes == 0) {
       break;
     }
 
+    if (dst == nullptr) {
+      return hipErrorInvalidValue;
+    }
+
+    size_t offset = 0;
+    amd::Memory* memObj = getMemoryObject(dst, offset);
+    if (memObj == nullptr) {
+      return hipErrorInvalidValue;
+    }
+
     // In case of validation failure stop processing. Returns hip_error.
-    hip_error = ihipMemset_validate(dst, value, valueSize, sizeBytes);
+    hip_error = ihipMemset_validate(memObj, value, valueSize, sizeBytes);
     if (hip_error != hipSuccess) {
       break;
     }
@@ -2993,8 +2992,6 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
     // spec says hipMemset will be asynchronous when destination memory is device memory
     // and pointer is non-offseted
     if (isAsync == false) {
-      size_t offset = 0;
-      amd::Memory* memObj = getMemoryObject(dst, offset);
       auto flags = memObj->getMemFlags();
       if ((memObj->getUserData().sync_mem_ops_) ||
           (offset == 0 &&
@@ -3007,7 +3004,7 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
     if (hip_stream == nullptr) {
       return hipErrorOutOfMemory;
     }
-    hip_error = ihipMemsetCommand(commands, dst, value, valueSize, sizeBytes, hip_stream);
+    hip_error = ihipMemsetCommand(commands, memObj, value, valueSize, sizeBytes, hip_stream, offset);
     if (hip_error != hipSuccess) {
       break;
     }
@@ -3102,11 +3099,8 @@ hipError_t hipMemsetD32Async(hipDeviceptr_t dst, int value, size_t count, hipStr
   HIP_RETURN(ihipMemset(dst, value, valueSize, sizeBytes, stream, true));
 }
 
-hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent,
-                                 size_t sizeBytes) {
-  size_t offset = 0;
-  amd::Memory* memory = getMemoryObject(pitchedDevPtr.ptr, offset, sizeBytes);
-
+hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, amd::Memory* memory, size_t offset,
+                                 int value, hipExtent extent, size_t sizeBytes) {
   if (memory == nullptr) {
     return hipErrorInvalidValue;
   }
@@ -3124,14 +3118,12 @@ hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, int value, hipExte
 
 // ================================================================================================
 hipError_t ihipMemset3DCommand(std::vector<amd::Command*>& commands, hipPitchedPtr pitchedDevPtr,
-                               int value, hipExtent extent, hip::Stream* stream,
-                               size_t elementSize = 1) {
-  size_t offset = 0;
+                               amd::Memory* memory, size_t offset, int value, hipExtent extent,
+                               hip::Stream* stream, size_t elementSize = 1) {
   auto sizeBytes = extent.width * extent.height * extent.depth;
-  amd::Memory* memory = getMemoryObject(pitchedDevPtr.ptr, offset);
   if (pitchedDevPtr.pitch == extent.width) {
-    return ihipMemsetCommand(commands, pitchedDevPtr.ptr, value, elementSize,
-                             static_cast<size_t>(sizeBytes), stream);
+    return ihipMemsetCommand(commands, memory, value, elementSize,
+                             static_cast<size_t>(sizeBytes), stream, offset);
   }
   // Workaround for cases when pitch > row until fill kernel will be updated to support pitch.
   // Fall back to filling one row at a time.
@@ -3163,7 +3155,12 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
     // sizeBytes is zero hence returning early as nothing to be set
     return hipSuccess;
   }
-  hipError_t status = ihipMemset3D_validate(pitchedDevPtr, value, extent, sizeBytes);
+  size_t offset = 0;
+  amd::Memory* memory = getMemoryObject(pitchedDevPtr.ptr, offset, sizeBytes);
+  if (memory == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  hipError_t status = ihipMemset3D_validate(pitchedDevPtr, memory, offset, value, extent, sizeBytes);
   if (status != hipSuccess) {
     return status;
   }
@@ -3171,9 +3168,7 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
   // spec says hipMemset will be asynchronous when destination memory is device memory
   // and pointer is non-offseted
   if (isAsync == false) {
-    size_t offset = 0;
-    amd::Memory* memObj = getMemoryObject(pitchedDevPtr.ptr, offset);
-    auto flags = memObj->getMemFlags();
+    auto flags = memory->getMemFlags();
     if (offset == 0 &&
         !(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER))) {
       isAsync = true;
@@ -3181,7 +3176,7 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
   }
   hip::Stream* hip_stream = hip::getStream(stream);
   std::vector<amd::Command*> commands;
-  status = ihipMemset3DCommand(commands, pitchedDevPtr, value, extent, hip_stream, elementSize);
+  status = ihipMemset3DCommand(commands, pitchedDevPtr, memory, offset, value, extent, hip_stream, elementSize);
   if (status != hipSuccess) {
     return status;
   }
