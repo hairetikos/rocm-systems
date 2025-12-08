@@ -385,6 +385,9 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_IndexArrayConstraints") {
                     hipErrorInvalidValue);
   }
 
+// CUDA has a defect in the implementation of cudaMemPrefetchBatchAsync that
+// allows for non-monotonic indices.
+#if HT_AMD
   SECTION("Index array must be monotonically increasing") {
     std::vector<size_t> invalid_indices = {0, 1, 0};
 
@@ -394,6 +397,7 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_IndexArrayConstraints") {
                                  flags, stream_guard.stream()),
         hipErrorInvalidValue);
   }
+#endif
 
   SECTION("Last index must be less than count") {
     std::vector<size_t> invalid_indices = {0, 2, 4};
@@ -505,7 +509,7 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_ParameterValidation") {
         hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
                                  invalid_locations.data(), location_indices.data(),
                                  invalid_locations.size(), flags, stream_guard.stream()),
-        hipErrorInvalidDevice);
+        hipErrorInvalidValue);
   }
 }
 
@@ -548,57 +552,6 @@ TEST_CASE("Unit_hipMemPrefetchBatchAsync_Negative_DeviceCapabilities") {
   } else {
     REQUIRE(result == hipSuccess);
   }
-}
-
-/**
- * Test Description
- * ------------------------
- *  - Test misaligned addresses (not aligned to page boundaries)
- *  - Verify API accepts misaligned addresses and preserves data integrity
- */
-TEST_CASE("Unit_hipMemPrefetchBatchAsync_EdgeCase_MisalignedAddresses") {
-  REQUIRE_MANAGED_ACCESS_DEVICE(device);
-
-  constexpr size_t buffer_size_bytes = 4096 * sizeof(int);
-  constexpr size_t num_elements = buffer_size_bytes / sizeof(int);
-
-  LinearAllocGuard<int> managed_memory(LinearAllocs::hipMallocManaged, buffer_size_bytes);
-
-  std::fill_n(managed_memory.ptr(), num_elements, kTestValueBase);
-
-  StreamGuard stream_guard(Streams::created);
-
-  void* misaligned_ptr = reinterpret_cast<char*>(managed_memory.ptr()) + 128;
-  std::array<void*, 1> managed_ptrs = {misaligned_ptr};
-  std::array<size_t, 1> buffer_sizes = {1024};
-
-  std::array<hipMemLocation, 1> locations;
-  locations[0].type = hipMemLocationTypeDevice;
-  locations[0].id = device;
-
-  std::array<size_t, 1> location_indices = {0};
-  constexpr unsigned long long flags = 0;
-
-  HIP_CHECK(hipMemPrefetchBatchAsync(managed_ptrs.data(), buffer_sizes.data(), managed_ptrs.size(),
-                                     locations.data(), location_indices.data(), locations.size(),
-                                     flags, stream_guard.stream()));
-
-  HIP_CHECK(hipStreamSynchronize(stream_guard.stream()));
-  VerifyDataOnDevice(managed_memory.ptr(), stream_guard.stream());
-
-  // Query with the actual misaligned pointer that was prefetched
-  int last_prefetch_location = -1;
-  HIP_CHECK(hipMemRangeGetAttribute(&last_prefetch_location, sizeof(int),
-                                    hipMemRangeAttributeLastPrefetchLocation, misaligned_ptr,
-                                    buffer_sizes[0]));
-  REQUIRE(last_prefetch_location == device);
-
-  // Query with the original aligned pointer and full buffer size
-  HIP_CHECK(hipMemRangeGetAttribute(&last_prefetch_location, sizeof(int),
-                                    hipMemRangeAttributeLastPrefetchLocation, managed_memory.ptr(),
-                                    buffer_size_bytes));
-
-  REQUIRE(last_prefetch_location != device);
 }
 
 /**

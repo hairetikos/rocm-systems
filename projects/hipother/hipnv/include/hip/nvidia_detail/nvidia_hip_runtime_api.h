@@ -1738,13 +1738,6 @@ inline static enum cudaChannelFormatKind hipChannelFormatKindToCudaChannelFormat
   }
 }
 
-inline static CUmemLocation hipMemLocationToCUmemLocation(const hipMemLocation* loc) {
-  CUmemLocation cuLoc;
-  cuLoc.id = loc->id;
-  cuLoc.type = (CUmemLocationType)loc->type;
-  return cuLoc;
-}
-
 typedef enum cudaExternalMemoryHandleType hipExternalMemoryHandleType;
 #define hipExternalMemoryHandleTypeOpaqueFd cudaExternalMemoryHandleTypeOpaqueFd
 #define hipExternalMemoryHandleTypeOpaqueWin32 cudaExternalMemoryHandleTypeOpaqueWin32
@@ -1950,6 +1943,7 @@ typedef enum cudaMemLocationType hipMemLocationType;
 #define hipMemLocationTypeDevice cudaMemLocationTypeDevice
 #define hipMemLocationTypeHost cudaMemLocationTypeHost
 #define hipMemLocationTypeHostNuma cudaMemLocationTypeHostNuma
+#define hipMemLocationTypeHostNumaCurrent cudaMemLocationTypeHostNumaCurrent
 #define hipMemHandleTypeNone cudaMemHandleTypeNone
 #define hipMemHandleTypePosixFileDescriptor cudaMemHandleTypePosixFileDescriptor
 #define hipMemHandleTypeWin32 cudaMemHandleTypeWin32
@@ -2110,16 +2104,8 @@ inline static hipError_t hipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes
                                                   hipMemLocation* locations,
                                                   size_t* location_indices, size_t num_locations,
                                                   unsigned long long flags, hipStream_t stream) {
-  if (locations == nullptr) {
-    return hipCUResultTohipError(cuMemPrefetchBatchAsync(
-      reinterpret_cast<CUdeviceptr*>(dev_ptrs), sizes, count, nullptr, location_indices, num_locations, flags, stream));
-  }
-  CUmemLocation cu_locations[num_locations];
-  for (size_t i = 0; i < num_locations; i++) {
-    cu_locations[i] = hipMemLocationToCUmemLocation(reinterpret_cast<const hipMemLocation*>(&locations[i]));
-  }
-  return hipCUResultTohipError(cuMemPrefetchBatchAsync(
-      reinterpret_cast<CUdeviceptr*>(dev_ptrs), sizes, count, cu_locations, location_indices, num_locations, flags, stream));
+  return hipCUDAErrorTohipError(cudaMemPrefetchBatchAsync(
+      dev_ptrs, sizes, count, locations, location_indices, num_locations, flags, stream));
 }
 #endif
 
@@ -3123,6 +3109,12 @@ inline static hipMemAllocationProp CUmemAllocationPropToHipMemAllocationProp(
   hipProp.allocFlags.reserved[2] = prop->allocFlags.reserved[2];
   hipProp.allocFlags.reserved[3] = prop->allocFlags.reserved[3];
   return hipProp;
+}
+inline static CUmemLocation hipMemLocationToCUmemLocation(const hipMemLocation* loc) {
+  CUmemLocation cuLoc;
+  cuLoc.id = loc->id;
+  cuLoc.type = (CUmemLocationType)loc->type;
+  return cuLoc;
 }
 inline static CUmemAccessDesc* hipMemAccessDescToCUmemAccessDesc(const hipMemAccessDesc* desc,
                                                                  size_t count) {
@@ -4693,7 +4685,7 @@ inline static hipError_t hipGraphRemoveDependencies(hipGraph_t graph, const hipG
                                                     const hipGraphNode_t* to,
                                                     size_t numDependencies) {
 #if CUDA_VERSION >= 13000
-// CUDA 13+ signature update:edgeData is optional array of edge data. 
+// CUDA 13+ signature update:edgeData is optional array of edge data.
 // If NULL, edge data is assumed to be default (zeroed).
   return hipCUDAErrorTohipError(cudaGraphRemoveDependencies(graph, from, to, NULL, numDependencies));
 #else

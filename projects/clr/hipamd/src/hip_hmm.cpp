@@ -476,7 +476,7 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
       amd::Device* dev = nullptr;
       if (location.type == hipMemLocationTypeDevice) {
         if (location.id < 0 || static_cast<size_t>(location.id) >= g_devices.size()) {
-          return hipErrorInvalidDevice;
+          return hipErrorInvalidValue;
         }
         dev = g_devices[location.id]->devices()[0];
       }
