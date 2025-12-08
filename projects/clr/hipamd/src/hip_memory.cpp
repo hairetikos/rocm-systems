@@ -2893,12 +2893,6 @@ hipError_t packFillMemoryCommand(amd::Command*& command, amd::Memory* memory, si
 
 hipError_t ihipMemset_validate(amd::Memory* dstMemory, int64_t value, size_t valueSize,
                                size_t sizeBytes) {
-  // TODO: remove duplicate check
-  if (sizeBytes == 0) {
-    // Skip if nothing needs filling.
-    return hipSuccess;
-  }
-
   // Validate Mem Access in case of VMM Memory
   if (!dstMemory->ValidateMemAccess(*hip::getCurrentDevice()->devices()[0], true)) {
     return hipErrorUnknown;
@@ -2966,58 +2960,54 @@ hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, amd::Memory* 
 hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeBytes,
                       hipStream_t stream, bool isAsync = false) {
   hipError_t hip_error = hipSuccess;
-  // TODO: look at removing do while loop and return error directly
-  do {
-    // Nothing to do, fill size is 0. Returns hipSuccess.
-    if (sizeBytes == 0) {
-      break;
-    }
+  // Nothing to do, fill size is 0. Returns hipSuccess.
+  if (sizeBytes == 0) {
+    return hipSuccess;
+  }
 
-    if (dst == nullptr) {
-      return hipErrorInvalidValue;
-    }
+  if (dst == nullptr) {
+    return hipErrorInvalidValue;
+  }
 
-    size_t offset = 0;
-    amd::Memory* memObj = getMemoryObject(dst, offset);
-    if (memObj == nullptr) {
-      return hipErrorInvalidValue;
-    }
+  size_t offset = 0;
+  amd::Memory* memObj = getMemoryObject(dst, offset);
+  if (memObj == nullptr) {
+    return hipErrorInvalidValue;
+  }
 
-    // In case of validation failure stop processing. Returns hip_error.
-    hip_error = ihipMemset_validate(memObj, value, valueSize, sizeBytes);
-    if (hip_error != hipSuccess) {
-      break;
+  // In case of validation failure stop processing. Returns hip_error.
+  hip_error = ihipMemset_validate(memObj, value, valueSize, sizeBytes);
+  if (hip_error != hipSuccess) {
+    return hip_error;
+  }
+  // This is required to comply with the spec
+  // spec says hipMemset will be asynchronous when destination memory is device memory
+  // and pointer is non-offseted
+  if (isAsync == false) {
+    auto flags = memObj->getMemFlags();
+    if ((memObj->getUserData().sync_mem_ops_) ||
+        (offset == 0 &&
+         !(flags & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS | CL_MEM_USE_HOST_PTR)))) {
+      isAsync = true;
     }
-    // This is required to comply with the spec
-    // spec says hipMemset will be asynchronous when destination memory is device memory
-    // and pointer is non-offseted
-    if (isAsync == false) {
-      auto flags = memObj->getMemFlags();
-      if ((memObj->getUserData().sync_mem_ops_) ||
-          (offset == 0 &&
-           !(flags & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS | CL_MEM_USE_HOST_PTR)))) {
-        isAsync = true;
-      }
-    }
-    std::vector<amd::Command*> commands;
-    hip::Stream* hip_stream = hip::getStream(stream);
-    if (hip_stream == nullptr) {
-      return hipErrorOutOfMemory;
-    }
-    hip_error = ihipMemsetCommand(commands, memObj, value, valueSize, sizeBytes, hip_stream, offset);
-    if (hip_error != hipSuccess) {
-      break;
-    }
+  }
+  std::vector<amd::Command*> commands;
+  hip::Stream* hip_stream = hip::getStream(stream);
+  if (hip_stream == nullptr) {
+    return hipErrorOutOfMemory;
+  }
+  hip_error = ihipMemsetCommand(commands, memObj, value, valueSize, sizeBytes, hip_stream, offset);
+  if (hip_error != hipSuccess) {
+    return hip_error;
+  }
 
-    for (auto command : commands) {
-      command->enqueue();
-      if (!isAsync) {
-        hip_stream->finish();
-      }
-      command->release();
+  for (auto command : commands) {
+    command->enqueue();
+    if (!isAsync) {
+      hip_stream->finish();
     }
-  } while (0);
-  return hip_error;
+    command->release();
+  }
 }
 
 hipError_t hipMemset_common(void* dst, int value, size_t sizeBytes, hipStream_t stream = nullptr) {
