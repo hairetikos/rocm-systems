@@ -2944,17 +2944,10 @@ hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams) {
   return hipSuccess;
 }
 
-hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, amd::Memory* dstMemory,
+hipError_t ihipMemsetCommand(amd::Command*& command, amd::Memory* dstMemory,
                              int64_t value, size_t valueSize, size_t sizeBytes, hip::Stream* stream,
                              size_t offset) {
-  hipError_t hip_error = hipSuccess;
-  amd::Command* command;
-
-  hip_error =
-      packFillMemoryCommand(command, dstMemory, offset, value, valueSize, sizeBytes, stream);
-  commands.push_back(command);
-
-  return hip_error;
+  return packFillMemoryCommand(command, dstMemory, offset, value, valueSize, sizeBytes, stream);
 }
 
 hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeBytes,
@@ -2991,23 +2984,21 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
       isAsync = true;
     }
   }
-  std::vector<amd::Command*> commands;
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {
     return hipErrorOutOfMemory;
   }
-  hip_error = ihipMemsetCommand(commands, memObj, value, valueSize, sizeBytes, hip_stream, offset);
+  amd::Command* command = nullptr;
+  hip_error = ihipMemsetCommand(command, memObj, value, valueSize, sizeBytes, hip_stream, offset);
   if (hip_error != hipSuccess) {
     return hip_error;
   }
 
-  for (auto command : commands) {
-    command->enqueue();
-    if (!isAsync) {
-      hip_stream->finish();
-    }
-    command->release();
+  command->enqueue();
+  if (!isAsync) {
+    hip_stream->finish();
   }
+  command->release();
   return hip_error;
 }
 
@@ -3108,12 +3099,12 @@ hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, amd::Memory* memor
 }
 
 // ================================================================================================
-hipError_t ihipMemset3DCommand(std::vector<amd::Command*>& commands, hipPitchedPtr pitchedDevPtr,
+hipError_t ihipMemset3DCommand(amd::Command*& command, hipPitchedPtr pitchedDevPtr,
                                amd::Memory* memory, size_t offset, int value, hipExtent extent,
                                hip::Stream* stream, size_t elementSize = 1) {
   auto sizeBytes = extent.width * extent.height * extent.depth;
   if (pitchedDevPtr.pitch == extent.width) {
-    return ihipMemsetCommand(commands, memory, value, elementSize,
+    return ihipMemsetCommand(command, memory, value, elementSize,
                              static_cast<size_t>(sizeBytes), stream, offset);
   }
   // Workaround for cases when pitch > row until fill kernel will be updated to support pitch.
@@ -3129,11 +3120,12 @@ hipError_t ihipMemset3DCommand(std::vector<amd::Command*>& commands, hipPitchedP
                    pitchedDevPtr.pitch, 0)) {
     return hipErrorInvalidValue;
   }
-  amd::FillMemoryCommand* command;
   command =
       new amd::FillMemoryCommand(*stream, CL_COMMAND_FILL_BUFFER, amd::Command::EventWaitList{},
                                  *memory->asBuffer(), &value, elementSize, origin, region, surface);
-  commands.push_back(command);
+  if (command == nullptr) {
+    return hipErrorOutOfMemory;
+  }
   return hipSuccess;
 }
 
@@ -3166,18 +3158,16 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
     }
   }
   hip::Stream* hip_stream = hip::getStream(stream);
-  std::vector<amd::Command*> commands;
-  status = ihipMemset3DCommand(commands, pitchedDevPtr, memory, offset, value, extent, hip_stream, elementSize);
+  amd::Command* command = nullptr;
+  status = ihipMemset3DCommand(command, pitchedDevPtr, memory, offset, value, extent, hip_stream, elementSize);
   if (status != hipSuccess) {
     return status;
   }
-  for (auto& command : commands) {
-    command->enqueue();
-    if (!isAsync) {
-      hip_stream->finish();
-    }
-    command->release();
+  command->enqueue();
+  if (!isAsync) {
+    hip_stream->finish();
   }
+  command->release();
   return hipSuccess;
 }
 
