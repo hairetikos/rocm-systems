@@ -3008,6 +3008,7 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
     }
     command->release();
   }
+  return hip_error;
 }
 
 hipError_t hipMemset_common(void* dst, int value, size_t sizeBytes, hipStream_t stream = nullptr) {

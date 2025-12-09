@@ -2151,7 +2151,7 @@ class GraphMemsetNode : public GraphNode {
       if (memObj == nullptr) {
         return hipErrorInvalidValue;
       }
-      hipError_t status = ihipMemsetCommand(commands_, memObj, memsetParams_.value,
+      status = ihipMemsetCommand(commands_, memObj, memsetParams_.value,
                                             memsetParams_.elementSize, sizeBytes, stream, offset);
     } else {
       auto sizeBytes = memsetParams_.width * memsetParams_.elementSize * memsetParams_.height * depth_;
@@ -2160,7 +2160,7 @@ class GraphMemsetNode : public GraphNode {
       if (memObj == nullptr) {
         return hipErrorInvalidValue;
       }
-      hipError_t status = ihipMemset3DCommand(
+      status = ihipMemset3DCommand(
           commands_,
           {memsetParams_.dst, memsetParams_.pitch, arrWidth_ * memsetParams_.elementSize,
            arrHeight_},
@@ -2202,15 +2202,14 @@ class GraphMemsetNode : public GraphNode {
       // invalid value if new width is more than actual allocation.
       size_t discardOffset = 0;
       amd::Memory* memObj = getMemoryObject(params->dst, discardOffset);
-      if (memObj != nullptr) {
-        if (params->width * params->elementSize > memObj->getSize()) {
-          return hipErrorInvalidValue;
-        }
-      }
-      sizeBytes = params->width * params->elementSize;
       if (memObj == nullptr) {
         return hipErrorInvalidValue;
       }
+
+      if (params->width * params->elementSize > memObj->getSize()) {
+        return hipErrorInvalidValue;
+      }
+      sizeBytes = params->width * params->elementSize;
       hip_error = ihipMemset_validate(memObj, params->value, params->elementSize, sizeBytes);
     } else {
       if (isExec) {
