@@ -2864,33 +2864,6 @@ hipError_t hipMemcpy3DBatchAsync(size_t numOps, struct hipMemcpy3DBatchOp* opLis
   HIP_RETURN(status);
 }
 
-hipError_t packFillMemoryCommand(amd::Command*& command, amd::Memory* memory, size_t offset,
-                                 int64_t value, size_t valueSize, size_t sizeBytes,
-                                 hip::Stream* stream) {
-  if ((memory == nullptr) || (stream == nullptr)) {
-    return hipErrorInvalidValue;
-  }
-
-  amd::Command::EventWaitList waitList;
-  amd::Coord3D fillOffset(offset, 0, 0);
-  amd::Coord3D fillSize(sizeBytes, 1, 1);
-  // surface=[pitch, width, height]
-  amd::Coord3D surface(sizeBytes, sizeBytes, 1);
-  amd::FillMemoryCommand* fillMemCommand =
-      new amd::FillMemoryCommand(*stream, CL_COMMAND_FILL_BUFFER, waitList, *memory->asBuffer(),
-                                 &value, valueSize, fillOffset, fillSize, surface);
-  if (fillMemCommand == nullptr) {
-    return hipErrorOutOfMemory;
-  }
-
-  if (!fillMemCommand->validatePeerMemory()) {
-    delete fillMemCommand;
-    return hipErrorInvalidValue;
-  }
-  command = fillMemCommand;
-  return hipSuccess;
-}
-
 hipError_t ihipMemset_validate(amd::Memory* dstMemory, int64_t value, size_t valueSize,
                                size_t sizeBytes) {
   // Validate Mem Access in case of VMM Memory
@@ -2947,7 +2920,28 @@ hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams) {
 hipError_t ihipMemsetCommand(amd::Command*& command, amd::Memory* dstMemory,
                              int64_t value, size_t valueSize, size_t sizeBytes, hip::Stream* stream,
                              size_t offset) {
-  return packFillMemoryCommand(command, dstMemory, offset, value, valueSize, sizeBytes, stream);
+  if ((memory == nullptr) || (stream == nullptr)) {
+    return hipErrorInvalidValue;
+  }
+
+  amd::Command::EventWaitList waitList;
+  amd::Coord3D fillOffset(offset, 0, 0);
+  amd::Coord3D fillSize(sizeBytes, 1, 1);
+  // surface=[pitch, width, height]
+  amd::Coord3D surface(sizeBytes, sizeBytes, 1);
+  amd::FillMemoryCommand* fillMemCommand =
+      new amd::FillMemoryCommand(*stream, CL_COMMAND_FILL_BUFFER, waitList, *memory->asBuffer(),
+                                 &value, valueSize, fillOffset, fillSize, surface);
+  if (fillMemCommand == nullptr) {
+    return hipErrorOutOfMemory;
+  }
+
+  if (!fillMemCommand->validatePeerMemory()) {
+    delete fillMemCommand;
+    return hipErrorInvalidValue;
+  }
+  command = fillMemCommand;
+  return hipSuccess;
 }
 
 hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeBytes,
