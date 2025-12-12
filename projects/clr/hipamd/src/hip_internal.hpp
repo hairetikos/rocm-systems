@@ -51,6 +51,7 @@ template <typename T> T ReturnPtrValue(T* ptr) { return (ptr != nullptr) ? *ptr 
 
 namespace hip{
   extern std::once_flag g_ihipInitialized;
+  extern std::once_flag g_atForkRegistration;
 }
 typedef struct hipArray {
     void* data;  // FIXME: generalize this
@@ -98,12 +99,23 @@ typedef struct ihipIpcEventHandle_st {
 }ihipIpcEventHandle_t;
 
 const char* ihipGetErrorName(hipError_t hip_error);
+void init_child();
+}
+
+inline void registerAtFork()
+{
+  if (pthread_atfork(nullptr,
+                         nullptr,
+                         hip::init_child)) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_INIT, "pthread_atfork() failed"); \
+    }
 }
 
 #define HIP_INIT(noReturn)                                                                         \
   {                                                                                                \
     bool status = true;                                                                            \
     std::call_once(hip::g_ihipInitialized, hip::init, &status);                                    \
+    std::call_once(hip::g_atForkRegistration, registerAtFork);\
     if (!status && !noReturn) {                                                                    \
       HIP_RETURN(hipErrorInvalidDevice);                                                           \
     }                                                                                              \
@@ -117,6 +129,7 @@ const char* ihipGetErrorName(hipError_t hip_error);
   {                                                                                                \
     bool status = true;                                                                            \
     std::call_once(hip::g_ihipInitialized, hip::init, &status);                                    \
+    std::call_once(hip::g_atForkRegistration, registerAtFork);\
     if (hip::tls.device_ == nullptr && hip::g_devices.size() > 0) {                                \
       hip::tls.device_ = hip::g_devices[0];                                                        \
       amd::Os::setPreferredNumaNode(hip::g_devices[0]->devices()[0]->getPreferredNumaNode());      \
@@ -646,6 +659,7 @@ public:
   extern amd::Context* host_context;
 
   extern void init(bool* status);
+  extern void init_child();
 
   extern Device* getCurrentDevice();
 

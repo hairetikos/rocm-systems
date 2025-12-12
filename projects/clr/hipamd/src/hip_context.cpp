@@ -33,6 +33,7 @@ const HipToolsDispatchTable* GetHipToolsDispatchTable();
 
 namespace hip {
 std::once_flag g_ihipInitialized;
+std::once_flag g_atForkRegistration;
 
 std::vector<hip::Device*> g_devices ROCCLR_INIT_PRIORITY(101);
 thread_local TlsAggregator tls;
@@ -114,6 +115,11 @@ void init(bool* status) {
   // Complete platform initialization
   PlatformState::instance().init();
   *status = true;
+}
+
+void init_child()
+{
+  amd::Runtime::init();
 }
 
 // ================================================================================================
