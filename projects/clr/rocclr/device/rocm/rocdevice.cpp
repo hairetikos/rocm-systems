@@ -441,7 +441,11 @@ bool Device::init() {
     if (amd::IS_HIP && ROC_GLOBAL_CU_MASK[0] != '\0') {
       roc_device->getGlobalCUMask(ROC_GLOBAL_CU_MASK);
     }
-
+    // Note: for now disable HSA path by default except for gfx942
+    if (IS_WINDOWS && (GPU_ENABLE_PAL == 2) &&
+        (std::strcmp(roc_device->info().name_, "gfx942") != 0)) {
+      return false;
+    }
     roc_device.release()->registerDevice();
   }
 
@@ -792,10 +796,19 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
 
           // Query the recommended granularity for this pool.
           stat = Hsa::memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_GRANULE,
-                                           &(dev->info_.virtualMemAllocGranularity_));
+                                              &(dev->info_.virtualMemAllocGranularityMinimum_));
           if (stat != HSA_STATUS_SUCCESS) {
             LogPrintfError(
                 "Cannot query HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_GRANULE info"
+                "failed with hsa_status: %d \n",
+                stat);
+          }
+          // Query the recommended granularity for this pool.
+          stat = Hsa::memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_REC_GRANULE,
+                                              &(dev->info_.virtualMemAllocGranularityRecommended_));
+          if (stat != HSA_STATUS_SUCCESS) {
+            LogPrintfError(
+                "Cannot query HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_REC_GRANULE info"
                 "failed with hsa_status: %d \n",
                 stat);
           }
@@ -983,6 +996,15 @@ bool Device::populateOCLDeviceConstants() {
       info_.uuid_[i] = unique_id[i + 4];
     }
   }
+
+  hsa_luid_t localUID = {0};
+  if (HSA_STATUS_SUCCESS ==
+      Hsa::agent_get_info(bkendDevice_, static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_LUID),
+                          &localUID)) {
+    info_.luidLowPart_ = localUID.low;
+    info_.luidHighPart_ = localUID.high;
+  }
+
   if (HSA_STATUS_SUCCESS !=
       Hsa::agent_get_info(bkendDevice_,
                           (amd::IS_HIP)
@@ -1608,6 +1630,13 @@ bool Device::populateOCLDeviceConstants() {
     LogError("HSA_AMD_AGENT_INFO_NUM_XCC query failed.");
   }
 
+  if (HSA_STATUS_SUCCESS !=
+      Hsa::agent_get_info(bkendDevice_,
+                          static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_PM4_EMULATION),
+                          &pm4_emulation_)) {
+    LogError("HSA_AMD_AGENT_INFO_PM4_EMULATION query failed.");
+  }
+
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Gfx Major/Minor/Stepping: %d/%d/%d", isa().versionMajor(),
           isa().versionMinor(), isa().versionStepping());
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HMM support: %d, XNACK: %d, Direct host access: %d",
@@ -1734,53 +1763,33 @@ bool Device::amdFileWrite(amd::Os::FileDesc handle, void* devicePtr, uint64_t si
   return true;
 }
 
+// ================================================================================================
 bool Device::bindExternalDevice(uint flags, void* const gfxDevice[], void* gfxContext,
                                 bool validateOnly) {
-#if defined(_WIN32)
-  return false;
-#else
   if ((flags & amd::Context::GLDeviceKhr) == 0) return false;
 
-  MesaInterop::MESA_INTEROP_KIND kind = MesaInterop::MESA_INTEROP_NONE;
-  MesaInterop::DisplayHandle display;
-  MesaInterop::ContextHandle context;
-
-  if ((flags & amd::Context::EGLDeviceKhr) != 0) {
-    kind = MesaInterop::MESA_INTEROP_EGL;
-    display.eglDisplay = reinterpret_cast<EGLDisplay>(gfxDevice[amd::Context::GLDeviceKhrIdx]);
-    context.eglContext = reinterpret_cast<EGLContext>(gfxContext);
-  } else {
-    kind = MesaInterop::MESA_INTEROP_GLX;
-    display.glxDisplay = reinterpret_cast<Display*>(gfxDevice[amd::Context::GLDeviceKhrIdx]);
-    context.glxContext = reinterpret_cast<GLXContext>(gfxContext);
-  }
-
-  mesa_glinterop_device_info info;
-  info.version = MESA_GLINTEROP_DEVICE_INFO_VERSION;
-  if (!MesaInterop::Init(kind)) {
+  void* glDevice = gfxDevice[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx];
+  if (!GlInterop::glAssociate(this, flags, gfxContext, glDevice)) {
+    LogError("Failed GlInterop::glAssociate()");
     return false;
   }
 
-  if (!MesaInterop::GetInfo(info, kind, display, context)) {
-    return false;
-  }
-
-  return info_.deviceTopology_.pcie.bus == info.pci_bus &&
-         info_.deviceTopology_.pcie.device == info.pci_device &&
-         info_.deviceTopology_.pcie.function == info.pci_function &&
-         info_.vendorId_ == info.vendor_id && pciDeviceId_ == info.device_id;
-
-#endif
+  return true;
 }
 
+// ================================================================================================
 bool Device::unbindExternalDevice(uint flags, void* const gfxDevice[], void* gfxContext,
                                   bool validateOnly) {
-#if defined(_WIN32)
-  return false;
-#else
   if ((flags & amd::Context::GLDeviceKhr) == 0) return false;
+
+  void* glDevice = gfxDevice[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx];
+  if (glDevice != nullptr) {
+    if (!GlInterop::glDissociate(this, gfxContext, glDevice)) {
+      LogWarning("Failed GlInterop::glDissociate()");
+      return false;
+    }
+  }
   return true;
-#endif
 }
 
 amd::Memory* Device::findMapTarget(size_t size) const {
