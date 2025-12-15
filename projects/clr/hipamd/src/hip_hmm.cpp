@@ -28,24 +28,6 @@
 
 namespace hip {
 
-static bool AllDevicesSupportPageableMemoryAccess() {
-  for (const auto& hip_device : g_devices) {
-    if (!hip_device->devices()[0]->info().hmmCpuMemoryAccessible_) {
-      return false;
-    }
-  }
-  return true;
-}
-static bool AllDevicesSupportHmm() {
-  for (const auto& hip_device : g_devices) {
-    if (!hip_device->devices()[0]->info().hmmSupported_) {
-      return false;
-    }
-  }
-  return true;
-}
-
-
 // Forward declaraiton of a function
 hipError_t ihipMallocManaged(void** ptr, size_t size, size_t align = 0, bool use_host_ptr = 0);
 hipError_t ihipMemPrefetchAsync(const void* dev_ptr, size_t count, hipMemLocation location,
@@ -97,6 +79,26 @@ static_assert(static_cast<uint32_t>(hipMemRangeAttributeAccessedBy) ==
 static_assert(static_cast<uint32_t>(hipMemRangeAttributeLastPrefetchLocation) ==
                   amd::MemRangeAttribute::LastPrefetchLocation,
               "Enum mismatch with ROCclr!");
+
+// ================================================================================================
+static bool AllDevicesSupportPageableMemoryAccess() {
+  for (const auto& hip_device : g_devices) {
+    if (!hip_device->devices()[0]->info().hmmCpuMemoryAccessible_) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// ================================================================================================
+static bool AllDevicesSupportHmm() {
+  for (const auto& hip_device : g_devices) {
+    if (!hip_device->devices()[0]->info().hmmSupported_) {
+      return false;
+    }
+  }
+  return true;
+}
 
 // ================================================================================================
 hipError_t hipMallocManaged(void** dev_ptr, size_t size, unsigned int flags) {
@@ -458,13 +460,12 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
 
       size_t offset = 0;
       amd::Memory* mem_obj = getMemoryObject(dev_ptr, offset);
-      if ((mem_obj != nullptr) && (size > (mem_obj->getSize() - offset))) {
+      if ((mem_obj == nullptr) || (size > (mem_obj->getSize() - offset))) {
         return hipErrorInvalidValue;
       }
 
       const bool is_managed_memory =
-          (mem_obj != nullptr) &&
-          (mem_obj->getMemFlags() & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR));
+          (mem_obj->getMemFlags() & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR)) != 0;
 
       requires_pageable_support |= !is_managed_memory;
 
