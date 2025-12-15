@@ -51,11 +51,13 @@ hipError_t ihipCreateGlobalVarObj(const char* name, hipModule_t hmod, amd::Memor
                                   hipDeviceptr_t* dptr, size_t* bytes);
 
 extern hipError_t ihipModuleLaunchKernel(hipFunction_t f, amd::LaunchParams& launch_params,
-                                         hipStream_t hStream, void** kernelParams, void** extra,
-                                         hipEvent_t startEvent, hipEvent_t stopEvent,
-                                         uint32_t flags = 0, uint32_t params = 0,
-                                         uint32_t gridId = 0, uint32_t numGrids = 0,
-                                         uint64_t prevGridSum = 0, uint64_t allGridSum = 0,
+                                         hipStream_t hStream, int deviceId, void** kernelParams,
+                                         void** extra, hipEvent_t startEvent,
+                                         hipEvent_t stopEvent, uint32_t flags = 0,
+                                         uint32_t params = 0, uint32_t gridId = 0,
+                                         uint32_t numGrids = 0,
+                                         uint64_t prevGridSum = 0,
+                                         uint64_t allGridSum = 0,
                                          uint32_t firstDevice = 0);
 static bool isCompatibleCodeObject(const std::string& codeobj_target_id, const char* device_name) {
   // Workaround for device name mismatch.
@@ -725,8 +727,8 @@ hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDi
     return hipErrorInvalidConfiguration;
   }
 
-  return ihipModuleLaunchKernel(func, launch_params, stream, args, nullptr, startEvent, stopEvent,
-                                flags);
+  return ihipModuleLaunchKernel(func, launch_params, stream, deviceId, args, nullptr, startEvent,
+                                stopEvent, flags);
 }
 
 // conversion routines between float and half precision

@@ -441,15 +441,15 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
 }
 
 hipError_t ihipModuleLaunchKernel(hipFunction_t f, amd::LaunchParams& launch_params,
-                                  hipStream_t hStream, void** kernelParams, void** extra,
-                                  hipEvent_t startEvent, hipEvent_t stopEvent, uint32_t flags = 0,
-                                  uint32_t params = 0, uint32_t gridId = 0, uint32_t numGrids = 0,
+                                  hipStream_t hStream, int deviceId, void** kernelParams,
+                                  void** extra, hipEvent_t startEvent, hipEvent_t stopEvent,
+                                  uint32_t flags = 0, uint32_t params = 0,
+                                  uint32_t gridId = 0, uint32_t numGrids = 0,
                                   uint64_t prevGridSum = 0, uint64_t allGridSum = 0,
                                   uint32_t firstDevice = 0) {
-  int deviceId = hip::Stream::DeviceId(hStream);
-
-  // Ensure the stream's device matches the current device,
-  // or the grid's assigned device in CooperativeKernelMultiDevice mode
+  // Ensure the stream's device matches the current device, or the grid's assigned
+  // device in CooperativeKernelMultiDevice mode. Callers should have validated
+  // deviceId (i.e. deviceId != -1).
   int targetDevice = (numGrids == 0) ? ihipGetDevice() : gridId;
   if (deviceId != targetDevice) {
     return hipErrorInvalidResourceHandle;
@@ -575,7 +575,8 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gr
   }
 
   HIP_RETURN(
-      ihipModuleLaunchKernel(f, launch_params, hStream, kernelParams, extra, nullptr, nullptr));
+      ihipModuleLaunchKernel(f, launch_params, hStream, deviceId, kernelParams, extra, nullptr,
+                             nullptr));
 }
 
 hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
@@ -588,7 +589,8 @@ hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                localWorkSizeX, localWorkSizeY, localWorkSizeZ, sharedMemBytes, hStream,
                kernelParams, extra, startEvent, stopEvent, flags);
 
-  if (!hip::isValid(hStream)) {
+  int deviceId = hip::Stream::DeviceId(hStream);
+  if (deviceId == -1) {
     HIP_RETURN(hipErrorContextIsDestroyed);
   }
 
@@ -599,8 +601,8 @@ hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
   amd::LaunchParams launch_params(globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, localWorkSizeX,
                                   localWorkSizeY, localWorkSizeZ, sharedMemBytes);
 
-  HIP_RETURN(ihipModuleLaunchKernel(f, launch_params, hStream, kernelParams, extra, startEvent,
-                                    stopEvent, flags));
+  HIP_RETURN(ihipModuleLaunchKernel(f, launch_params, hStream, deviceId, kernelParams, extra,
+                                    startEvent, stopEvent, flags));
 }
 
 
@@ -616,8 +618,13 @@ hipError_t hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
   amd::LaunchParams launch_params(globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX,
                                   blockDimY, blockDimZ, sharedMemBytes);
 
-  HIP_RETURN(ihipModuleLaunchKernel(f, launch_params, hStream, kernelParams, extra, startEvent,
-                                    stopEvent));
+  int deviceId = hip::Stream::DeviceId(hStream);
+  if (deviceId == -1) {
+    HIP_RETURN(hipErrorContextIsDestroyed);
+  }
+
+  HIP_RETURN(ihipModuleLaunchKernel(f, launch_params, hStream, deviceId, kernelParams, extra,
+                                    startEvent, stopEvent));
 }
 
 hipError_t hipModuleLaunchCooperativeKernel(hipFunction_t f, unsigned int gridDimX,
@@ -659,8 +666,9 @@ hipError_t hipModuleLaunchCooperativeKernel(hipFunction_t f, unsigned int gridDi
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  HIP_RETURN(ihipModuleLaunchKernel(f, launch_params, stream, kernelParams, nullptr, nullptr,
-                                    nullptr, 0, amd::NDRangeKernelCommand::CooperativeGroups));
+  HIP_RETURN(ihipModuleLaunchKernel(f, launch_params, stream, deviceId, kernelParams, nullptr,
+                                    nullptr, nullptr, 0,
+                                    amd::NDRangeKernelCommand::CooperativeGroups));
 }
 
 hipError_t ihipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* launchParamsList,
@@ -757,7 +765,12 @@ hipError_t ihipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams*
       return hipErrorInvalidConfiguration;
     }
 
-    result = ihipModuleLaunchKernel(launch.function, launch_params, launch.hStream,
+    int deviceId = hip::Stream::DeviceId(launch.hStream);
+    if (deviceId == -1) {
+      return hipErrorContextIsDestroyed;
+    }
+
+    result = ihipModuleLaunchKernel(launch.function, launch_params, launch.hStream, deviceId,
                                     launch.kernelParams, nullptr, nullptr, nullptr, flags, extFlags,
                                     i, numDevices, prevGridSize, allGridSize, firstDevice);
     if (result != hipSuccess) {
@@ -786,9 +799,10 @@ hipError_t hipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* 
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  // Validate all streams passed by user
+  // Validate all streams passed by user (using DeviceId, which internally validates)
   for (int i = 0; i < numDevices; ++i) {
-    if (!hip::isValid(launchParamsList[i].hStream)) {
+    int deviceId = hip::Stream::DeviceId(launchParamsList[i].hStream);
+    if (deviceId == -1) {
       HIP_RETURN(hipErrorInvalidValue);
     }
   }
@@ -888,8 +902,9 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 b
     return hipErrorInvalidConfiguration;
   }
 
-  return ihipModuleLaunchKernel(func, launch_params, hStream, kernelParams, nullptr, nullptr,
-                                nullptr, 0, amd::NDRangeKernelCommand::CooperativeGroups);
+  return ihipModuleLaunchKernel(func, launch_params, hStream, deviceId, kernelParams, nullptr,
+                                nullptr, nullptr, 0,
+                                amd::NDRangeKernelCommand::CooperativeGroups);
 }
 
 hipError_t hipLaunchCooperativeKernel(const void* f, dim3 gridDim, dim3 blockDim,
@@ -923,7 +938,8 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
   for (int i = 0; i < numDevices; ++i) {
     hipLaunchParams& launch = launchParamsList[i];
     // Validate stream passed by user
-    if (!hip::isValid(launch.stream)) {
+    int deviceId = hip::Stream::DeviceId(launch.stream);
+    if (deviceId == -1) {
       return hipErrorInvalidValue;
     }
 
@@ -1249,8 +1265,12 @@ hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f
   }
 
   if (config->numAttrs == 0) {
-    HIP_RETURN(ihipModuleLaunchKernel(f, launch_params, config->hStream, kernelParams, nullptr,
-                                      nullptr, nullptr, 0));
+    int deviceId = hip::Stream::DeviceId(config->hStream);
+    if (deviceId == -1) {
+      HIP_RETURN(hipErrorContextIsDestroyed);
+    }
+    HIP_RETURN(ihipModuleLaunchKernel(f, launch_params, config->hStream, deviceId, kernelParams,
+                                      nullptr, nullptr, nullptr, 0));
   }
 
   for (size_t attr_idx = 0; attr_idx < config->numAttrs; ++attr_idx) {
@@ -1258,8 +1278,12 @@ hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f
     switch (attr.id) {
       case hipLaunchAttributeCooperative: {
         if (attr.value.cooperative != 0) {
-          HIP_RETURN(ihipModuleLaunchKernel(f, launch_params, config->hStream, kernelParams,
-                                            nullptr, nullptr, nullptr, 0,
+          int deviceId = hip::Stream::DeviceId(config->hStream);
+          if (deviceId == -1) {
+            HIP_RETURN(hipErrorContextIsDestroyed);
+          }
+          HIP_RETURN(ihipModuleLaunchKernel(f, launch_params, config->hStream, deviceId,
+                                            kernelParams, nullptr, nullptr, nullptr, 0,
                                             amd::NDRangeKernelCommand::CooperativeGroups));
         }
         break;
