@@ -2920,7 +2920,7 @@ hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams) {
 hipError_t ihipMemsetCommand(amd::Command*& command, amd::Memory* dstMemory,
                              int64_t value, size_t valueSize, size_t sizeBytes, hip::Stream* stream,
                              size_t offset) {
-  if ((memory == nullptr) || (stream == nullptr)) {
+  if ((dstMemory == nullptr) || (stream == nullptr)) {
     return hipErrorInvalidValue;
   }
 
@@ -2930,7 +2930,7 @@ hipError_t ihipMemsetCommand(amd::Command*& command, amd::Memory* dstMemory,
   // surface=[pitch, width, height]
   amd::Coord3D surface(sizeBytes, sizeBytes, 1);
   amd::FillMemoryCommand* fillMemCommand =
-      new amd::FillMemoryCommand(*stream, CL_COMMAND_FILL_BUFFER, waitList, *memory->asBuffer(),
+      new amd::FillMemoryCommand(*stream, CL_COMMAND_FILL_BUFFER, waitList, *dstMemory->asBuffer(),
                                  &value, valueSize, fillOffset, fillSize, surface);
   if (fillMemCommand == nullptr) {
     return hipErrorOutOfMemory;
