@@ -22,8 +22,13 @@
 
 #include "ptrace_session.hpp"
 
+#include "lib/common/dl.hpp"
 #include "lib/common/filesystem.hpp"
 #include "lib/common/logging.hpp"
+
+#include <rocprofiler-sdk/version.h>
+
+#include <fmt/format.h>
 
 #include <dlfcn.h>
 #include <fcntl.h>
@@ -144,44 +149,14 @@ get_auxv_entry(int pid, size_t& entry_addr)
     ROCP_TRACE << "Entry address found to be " << entry_addr << " from " << filename;
 }
 
-std::optional<std::string>
-get_linked_path(std::string_view _name, open_modes_vec_t&& _open_modes)
-{
-    const open_modes_vec_t default_link_open_modes = {(RTLD_LAZY | RTLD_NOLOAD)};
-    if(_name.empty()) return fs::current_path().string();
-
-    if(_open_modes.empty()) _open_modes = default_link_open_modes;
-
-    void* _handle = nullptr;
-    bool  _noload = false;
-    for(auto _mode : _open_modes)
-    {
-        _handle = dlopen(_name.data(), _mode);
-        _noload = (_mode & RTLD_NOLOAD) == RTLD_NOLOAD;
-        if(_handle) break;
-    }
-
-    if(_handle)
-    {
-        struct link_map* _link_map = nullptr;
-        dlinfo(_handle, RTLD_DI_LINKMAP, &_link_map);
-        if(_link_map != nullptr && !std::string_view{_link_map->l_name}.empty())
-        {
-            return fs::absolute(fs::path{_link_map->l_name}).string();
-        }
-        if(_noload == false) dlclose(_handle);
-    }
-
-    return std::nullopt;
-}
-
 auto
 get_this_library_path()
 {
-    auto _this_lib_path =
-        get_linked_path("librocprofiler-sdk-rocattach.so.1", {RTLD_NOLOAD | RTLD_LAZY});
-    LOG_IF(FATAL, !_this_lib_path) << "librocprofiler-sdk-rocattach.so.1"
-                                   << " could not locate itself in the list of loaded libraries";
+    const auto libname = fmt::format("librocprofiler-sdk-rocattach.so.{}", ROCPROFILER_SOVERSION);
+    auto       _this_lib_path =
+        rocprofiler::common::dl::get_linked_path(libname, {RTLD_NOLOAD | RTLD_LAZY});
+    LOG_IF(FATAL, !_this_lib_path)
+        << fmt::format("{} could not locate itself in the list of loaded libraries", libname);
     return fs::path{*_this_lib_path}.parent_path().string();
 }
 
