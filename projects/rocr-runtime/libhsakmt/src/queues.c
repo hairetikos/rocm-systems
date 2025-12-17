@@ -148,14 +148,15 @@ HSAKMT_STATUS hsakmt_init_process_doorbells(HsaKFDContext *ctx, unsigned int Num
 	return ret;
 }
 
-static void get_doorbell_map_info(uint32_t node_id,
+static void get_doorbell_map_info(HsaKFDContext *ctx,
+				  uint32_t node_id,
 				  struct process_doorbells *doorbell)
 {
 	/*
 	 * GPUVM doorbell on Tonga requires a workaround for VM TLB ACTIVE bit
 	 * lookup bug. Remove ASIC check when this is implemented in amdgpu.
 	 */
-	uint32_t gfxv = hsakmt_get_gfxv_by_node_id(node_id);
+	uint32_t gfxv = hsakmt_get_gfxv_by_node_id(ctx, node_id);
 	doorbell->use_gpuvm = (hsakmt_is_dgpu && gfxv != GFX_VERSION_TONGA);
 	doorbell->size = DOORBELLS_PAGE_SIZE(DOORBELL_SIZE(gfxv));
 
@@ -272,7 +273,7 @@ static HSAKMT_STATUS map_doorbell(HsaKFDContext *ctx,
 		return HSAKMT_STATUS_SUCCESS;
 	}
 
-	get_doorbell_map_info(NodeId, &doorbells[NodeId]);
+	get_doorbell_map_info(ctx, NodeId, &doorbells[NodeId]);
 
 	if (doorbells[NodeId].use_gpuvm) {
 		status = map_doorbell_dgpu(ctx, NodeId, gpu_id, doorbell_mmap_offset);
@@ -385,7 +386,7 @@ void *hsakmt_allocate_exec_aligned_memory_gpu(HsaKFDContext *ctx,
 		 * nonPaged=0 system memory allocation uses GTT path
 		 */
 		if (!nonPaged) {
-			cpu_id = hsakmt_get_direct_link_cpu(NodeId);
+			cpu_id = hsakmt_get_direct_link_cpu(ctx, NodeId);
 			if (cpu_id == INVALID_NODEID) {
 				flags.ui32.NoNUMABind = 1;
 				cpu_id = 0;
@@ -680,7 +681,7 @@ HSAKMT_STATUS HSAKMTAPI hsaKmtCreateQueueExtCtx(HsaKFDContext *ctx,
 		Priority > HSA_QUEUE_PRIORITY_MAXIMUM)
 		return HSAKMT_STATUS_INVALID_PARAMETER;
 
-	result = hsakmt_validate_nodeid(NodeId, &gpu_id);
+	result = hsakmt_validate_nodeid(ctx, NodeId, &gpu_id);
 	if (result != HSAKMT_STATUS_SUCCESS)
 		return result;
 
@@ -691,7 +692,7 @@ HSAKMT_STATUS HSAKMTAPI hsaKmtCreateQueueExtCtx(HsaKFDContext *ctx,
 
 	memset(q, 0, sizeof(*q));
 
-	q->gfxv = hsakmt_get_gfxv_by_node_id(NodeId);
+	q->gfxv = hsakmt_get_gfxv_by_node_id(ctx, NodeId);
 	q->use_ats = false;
 
 	if (q->gfxv == GFX_VERSION_TONGA)
@@ -932,7 +933,7 @@ HSAKMT_STATUS HSAKMTAPI hsaKmtSetTrapHandlerCtx(HsaKFDContext *ctx,
 
 	CHECK_KFD_OPEN();
 
-	result = hsakmt_validate_nodeid(Node, &gpu_id);
+	result = hsakmt_validate_nodeid(ctx, Node, &gpu_id);
 	if (result != HSAKMT_STATUS_SUCCESS)
 		return result;
 
