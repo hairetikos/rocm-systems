@@ -1387,7 +1387,7 @@ class MemObjMap : public AllStatic {
   static void RemoveMemObj(const void* k);
 
   //!< Find the mem object based on the input pointer, outputs the offset
-  static amd::Memory* FindMemObj(const void* k, size_t* offset = nullptr);
+  static amd::Memory* FindMemObj(const void* k, size_t* offset = nullptr, Device* dev = nullptr);
   static void UpdateAccess(amd::Device* peerDev);
   //!< Purge all user allocated memories on the given device
   static void Purge(amd::Device* dev);
@@ -1406,13 +1406,14 @@ class MemObjMap : public AllStatic {
   //!< Same as FindMemObj but for ipc handle to MemObj mapping
   static amd::Memory* FindIpcHandleMemObj(const IpcMemHandle& k);
 
+  //!< Shared read/write lock for all MemObjMap operations (including per-device maps)
+  static std::shared_mutex AllocatedLock_;
+
  private:
   //!< the mem object<->hostptr information container
   static std::map<uintptr_t, amd::Memory*> MemObjMap_;
   //!< the virtual mem object<->hostptr information container
   static std::map<uintptr_t, amd::Memory*> VirtualMemObjMap_;
-  //!< Shared read/write lock
-  static std::shared_mutex AllocatedLock_;
   //!< the ipc handle<->mem object information container
   static std::map<IpcMemHandle, amd::Memory*> IpcHandleMemObjMap_;
 };
@@ -2178,6 +2179,15 @@ class Device : public RuntimeObject {
   //! Enable the specified extension
   char* getExtensionString();
 
+  //! Adds object<->vaddr mapping for this device
+  void AddDevMemObj(const void* k, amd::Memory* memObj);
+
+  //! Removes object<->vaddr mapping for this device
+  void RemoveDevMemObj(const void* k);
+
+  //! Finds a memory object by device virtual address for this device
+  amd::Memory* FindDevMemObj(const void* k, size_t* offset = nullptr) const;
+
   device::Info info_;           //!< Device info structure
   device::Settings* settings_;  //!< Device settings
   union {
@@ -2222,6 +2232,10 @@ class Device : public RuntimeObject {
   Monitor* vaCacheAccess_;                            //!< Lock to serialize VA caching access
   std::map<uintptr_t, device::Memory*>* vaCacheMap_;  //!< VA cache map
   uint32_t index_;                                    //!< Unique device index
+
+  mutable std::shared_mutex devMemObjMapLock_;  //!< Lock for per-device VA map
+  std::map<uintptr_t, amd::Memory*>
+      devMemObjMap_;  //!< The mem object<->vaddr information container
   static constexpr int kDefaultNumaNode = -1;         //! Default NUMA node value for SVM operations
   // Tracks all amd::Memory objects allocated via hostcall for this device.
   std::vector<amd::Memory*> hostcall_allocated_memories_;

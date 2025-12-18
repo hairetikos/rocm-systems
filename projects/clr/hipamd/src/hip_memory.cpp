@@ -36,7 +36,9 @@ std::unordered_set<hipArray*> hipArraySet;
 
 // ================================================================================================
 amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
-  auto memObj = amd::MemObjMap::FindMemObj(ptr, &offset);
+  amd::Device* currentDev = hip::getCurrentDevice()->devices()[0];
+  auto memObj = amd::MemObjMap::FindMemObj(ptr, &offset, currentDev);
+
   if (memObj == nullptr) {
     // If memObj not found, use arena_mem_obj. arena_mem_obj is null, if HMM is disabled.
     memObj =
@@ -1335,12 +1337,14 @@ hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags)
 
     amd::MemObjMap::AddMemObj(hostPtr, mem);
     for (const auto& device : g_devices) {
-      // Since the amd::Memory object is shared between all devices
-      // it's fine to have multiple addresses mapped to it
-      const device::Memory* devMem = mem->getDeviceMemory(*device->devices()[0]);
-      void* vAddr = reinterpret_cast<void*>(devMem->virtualAddress());
-      if ((hostPtr != vAddr) && (amd::MemObjMap::FindMemObj(vAddr) == nullptr)) {
-        amd::MemObjMap::AddMemObj(vAddr, mem);
+      // Each device maintains its own VA->memory mapping to avoid conflicts
+      amd::Device* amdDevice = device->devices()[0];
+      const device::Memory* devMem = mem->getDeviceMemory(*amdDevice);
+      if (devMem != nullptr) {
+        void* vAddr = reinterpret_cast<void*>(devMem->virtualAddress());
+        if (hostPtr != vAddr) {
+          amdDevice->AddDevMemObj(vAddr, mem);
+        }
       }
     }
 
@@ -1373,11 +1377,13 @@ hipError_t ihipHostUnregister(void* hostPtr) {
 
     amd::MemObjMap::RemoveMemObj(hostPtr);
     for (const auto& device : g_devices) {
-      const device::Memory* devMem = mem->getDeviceMemory(*device->devices()[0]);
+      // Remove device VA from per-device map
+      amd::Device* amdDevice = device->devices()[0];
+      const device::Memory* devMem = mem->getDeviceMemory(*amdDevice);
       if (devMem != nullptr) {
         void* vAddr = reinterpret_cast<void*>(devMem->virtualAddress());
-        if ((vAddr != hostPtr) && amd::MemObjMap::FindMemObj(vAddr)) {
-          amd::MemObjMap::RemoveMemObj(vAddr);
+        if (vAddr != hostPtr) {
+          amdDevice->RemoveDevMemObj(vAddr);
         }
       }
     }
