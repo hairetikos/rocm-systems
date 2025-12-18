@@ -640,12 +640,10 @@ update_table(const context::context_array_t& _contexts,
 
         // 1. get the sub-table containing the function pointer in original table
         // 2. get reference to function pointer in sub-table in original table
-        // 3. update function pointer with wrapper (with memory barriers for thread safety)
+        // 3. update function pointer with wrapper
         auto& _table = _info.get_table(_orig);
         auto& _func  = _info.get_table_func(_table);
-        std::atomic_thread_fence(std::memory_order_release);
-        _func = _info.get_functor(_func);
-        std::atomic_thread_fence(std::memory_order_release);
+        _func        = _info.get_functor(_func);
     }
 }
 
