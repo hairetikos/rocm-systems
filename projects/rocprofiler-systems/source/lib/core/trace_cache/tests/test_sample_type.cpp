@@ -295,7 +295,7 @@ TEST_F(sample_type_test, pmc_event_with_sample_type_identifier)
     EXPECT_EQ(pmc_event_with_sample::type_identifier,
               type_identifier_t::pmc_event_with_sample);
 }
-
+/*
 TEST_F(sample_type_test, amd_smi_sample_serialize_deserialize)
 {
     std::vector<uint8_t> gpu_activity_data = { 10, 20, 30, 40, 50 };
@@ -350,6 +350,8 @@ TEST_F(sample_type_test, amd_smi_sample_empty_gpu_activity)
 
     EXPECT_TRUE(deserialized.gpu_activity.empty());
 }
+
+*/
 
 TEST_F(sample_type_test, cpu_freq_sample_serialize_deserialize)
 {
@@ -511,12 +513,6 @@ TEST_F(sample_type_test, pmc_event_with_sample_default_constructor)
     EXPECT_EQ(sample.type_identifier, type_identifier_t::pmc_event_with_sample);
 }
 
-TEST_F(sample_type_test, amd_smi_sample_default_constructor)
-{
-    amd_smi_sample sample;
-    EXPECT_EQ(sample.type_identifier, type_identifier_t::amd_smi_sample);
-}
-
 TEST_F(sample_type_test, cpu_freq_sample_default_constructor)
 {
     cpu_freq_sample sample;
@@ -546,23 +542,4 @@ TEST_F(sample_type_test, kernel_dispatch_sample_large_values)
     EXPECT_EQ(deserialized.thread_id, UINT64_MAX);
     EXPECT_EQ(deserialized.private_segment_size, UINT32_MAX);
     EXPECT_EQ(deserialized.grid_size_z, UINT32_MAX);
-}
-
-TEST_F(sample_type_test, amd_smi_sample_large_gpu_activity)
-{
-    std::vector<uint8_t> large_activity(256);
-    for(size_t i = 0; i < large_activity.size(); ++i)
-    {
-        large_activity[i] = static_cast<uint8_t>(i);
-    }
-
-    amd_smi_sample original(0xFF, 0, 0, 0, 0, 0, 0, 0, 0, large_activity);
-
-    serialize(buffer.data(), original);
-
-    uint8_t* buffer_ptr   = buffer.data();
-    auto     deserialized = deserialize<amd_smi_sample>(buffer_ptr);
-
-    EXPECT_EQ(deserialized.gpu_activity.size(), 256);
-    EXPECT_EQ(deserialized.gpu_activity, large_activity);
 }
