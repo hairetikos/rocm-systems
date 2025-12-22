@@ -344,58 +344,52 @@ rocpd_processor_t::handle([[maybe_unused]] const amd_smi_sample& _amd_smi)
         m_data_processor->insert_sample(track_name, _amd_smi.timestamp, event_id);
     };
 
-    using pos = trace_cache::amd_smi_sample::settings_positions;
-    std::bitset<8> settings_bits(_amd_smi.settings);
-    bool           is_busy_enabled  = settings_bits.test(static_cast<int>(pos::busy));
-    bool           is_temp_enabled  = settings_bits.test(static_cast<int>(pos::temp));
-    bool           is_power_enabled = settings_bits.test(static_cast<int>(pos::power));
-    bool is_mem_usage_enabled = settings_bits.test(static_cast<int>(pos::mem_usage));
-
-    bool is_vcn_enabled  = settings_bits.test(static_cast<int>(pos::vcn_activity));
-    bool is_jpeg_enabled = settings_bits.test(static_cast<int>(pos::jpeg_activity));
-    bool is_xgmi_enabled = settings_bits.test(static_cast<int>(pos::xgmi));
-    bool is_pcie_enabled = settings_bits.test(static_cast<int>(pos::pcie));
-
     insert_event_and_sample(
-        is_busy_enabled, trait::name<category::amd_smi_gfx_busy>::value,
+        _amd_smi.enabled_metric.bits.gfx_activity,
+        trait::name<category::amd_smi_gfx_busy>::value,
         info::annotate_with_device_id<category::amd_smi_gfx_busy>(_amd_smi.device_id)
             .c_str(),
-        _amd_smi.gfx_activity);
+        _amd_smi.metrics.gfx_activity);
     insert_event_and_sample(
-        is_busy_enabled, trait::name<category::amd_smi_umc_busy>::value,
+        _amd_smi.enabled_metric.bits.umc_activity,
+        trait::name<category::amd_smi_umc_busy>::value,
         info::annotate_with_device_id<category::amd_smi_umc_busy>(_amd_smi.device_id)
             .c_str(),
-        _amd_smi.umc_activity);
+        _amd_smi.metrics.umc_activity);
     insert_event_and_sample(
-        is_busy_enabled, trait::name<category::amd_smi_mm_busy>::value,
+        _amd_smi.enabled_metric.bits.mm_activity,
+        trait::name<category::amd_smi_mm_busy>::value,
         info::annotate_with_device_id<category::amd_smi_mm_busy>(_amd_smi.device_id)
             .c_str(),
-        _amd_smi.mm_activity);
+        _amd_smi.metrics.mm_activity);
     insert_event_and_sample(
-        is_temp_enabled, trait::name<category::amd_smi_temp>::value,
+        _amd_smi.enabled_metric.bits.hotspot_temperature,
+        trait::name<category::amd_smi_temp>::value,
         info::annotate_with_device_id<category::amd_smi_temp>(_amd_smi.device_id).c_str(),
-        _amd_smi.temperature);
+        _amd_smi.metrics.hotspot_temperature);
 
     insert_event_and_sample(
-        is_power_enabled, trait::name<category::amd_smi_power>::value,
+        _amd_smi.enabled_metric.bits.current_socket_power ||
+            _amd_smi.enabled_metric.bits.average_socket_power,
+        trait::name<category::amd_smi_power>::value,
         info::annotate_with_device_id<category::amd_smi_power>(_amd_smi.device_id)
             .c_str(),
-        _amd_smi.power);
+        _amd_smi.enabled_metric.bits.current_socket_power
+            ? _amd_smi.metrics.current_socket_power
+            : _amd_smi.metrics.average_socket_power);
+
     insert_event_and_sample(
-        is_mem_usage_enabled, trait::name<category::amd_smi_memory_usage>::value,
+        _amd_smi.enabled_metric.bits.memory_usage,
+        trait::name<category::amd_smi_memory_usage>::value,
         info::annotate_with_device_id<category::amd_smi_memory_usage>(_amd_smi.device_id)
             .c_str(),
-        _amd_smi.mem_usage);
+        _amd_smi.metrics.memory_usage / 1024.0);
 
-    if(!is_vcn_enabled && !is_jpeg_enabled && !is_xgmi_enabled && !is_pcie_enabled)
+    if(!_amd_smi.enabled_metric.bits.vcn_activity &&
+       !_amd_smi.enabled_metric.bits.jpeg_activity &&
+       !_amd_smi.enabled_metric.bits.xgmi && !_amd_smi.enabled_metric.bits.pcie)
         return;
-
-    gpu::gpu_metrics_t              gpu_metrics;
-    gpu::gpu_metrics_capabilities_t capabilities;
-    gpu::deserialize_gpu_metrics(_amd_smi.gpu_activity, gpu_metrics, is_vcn_enabled,
-                                 is_jpeg_enabled, is_xgmi_enabled, is_pcie_enabled,
-                                 capabilities);
-
+/*
     // Insert VCN and JPEG activity metrics
     auto insert_decode_vector_metrics = [&](auto category, bool _is_enabled,
                                             const std::vector<uint16_t>& data,
@@ -523,6 +517,7 @@ rocpd_processor_t::handle([[maybe_unused]] const amd_smi_sample& _amd_smi)
             _amd_smi.device_id)
             .c_str(),
         static_cast<double>(gpu_metrics.pcie_bandwidth_inst));
+    */
 #endif
 }
 
