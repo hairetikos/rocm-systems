@@ -213,6 +213,13 @@ struct perfetto_policy
                 static_cast<uint32_t>(enabled_metrics.value & supported_metrics.value)
         };
 
+        if(_enabled_metrics.value == 0)
+        {
+            ROCPROFSYS_WARNING(0, "No enabled AMD SMI metrics for device %zu\n",
+                               device_index);
+            return;
+        }
+
         auto& tracks = get_perfetto_tracks();
 
         for(auto& itr : samples)
@@ -221,6 +228,7 @@ struct perfetto_policy
 
             if(!_thread_info->is_valid_time(_ts))
             {
+                ROCPROFSYS_WARNING(0, "Invalid timestamp %zu for amd-smi sample\n", _ts);
                 continue;
             }
 
@@ -304,7 +312,7 @@ struct perfetto_policy
                 }
             }
 
-            std::once_flag once_flag;
+            static std::once_flag once_flag;
             std::call_once(once_flag, [&]() {
                 printf("JPEG activity: %d, enabled: %d, supported: %d\n",
                        _enabled_metrics.bits.jpeg_activity,

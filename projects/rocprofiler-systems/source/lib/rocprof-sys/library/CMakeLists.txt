@@ -30,17 +30,6 @@ set(library_headers
     ${CMAKE_CURRENT_LIST_DIR}/tracing.hpp
 )
 
-set(amd_smi_headers
-    ${CMAKE_CURRENT_LIST_DIR}/amd_smi/common.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/amd_smi/amd_smi_driver.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/amd_smi/processor.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/amd_smi/service.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/amd_smi/settings.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/amd_smi/perfetto_policy.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/amd_smi/rocpd_policy.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/amd_smi/amd_smi_impl.hpp
-)
-
 target_sources(
     rocprofiler-systems-object-library
     PRIVATE ${library_sources} ${library_headers}
@@ -53,9 +42,9 @@ if(ROCPROFSYS_USE_ROCM)
             ${CMAKE_CURRENT_LIST_DIR}/rocm.cpp
             ${CMAKE_CURRENT_LIST_DIR}/rocprofiler-sdk.cpp
             ${CMAKE_CURRENT_LIST_DIR}/amd_smi.cpp
-            ${amd_smi_headers}
     )
     add_subdirectory(rocprofiler-sdk)
+    add_subdirectory(amd_smi)
 endif()
 
 add_subdirectory(causal)

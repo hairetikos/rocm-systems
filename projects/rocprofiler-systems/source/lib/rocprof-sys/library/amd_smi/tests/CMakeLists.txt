@@ -20,12 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-set(trace_cache_tests_sources
+set(amd_smi_tests_sources
     tests_amd_smi_impl.cpp
     tests_processor.cpp
 )
 
-add_library(amd-smi-tests OBJECT ${trace_cache_tests_sources})
+add_library(amd-smi-tests OBJECT ${amd_smi_tests_sources})
 
 target_link_libraries(
     amd-smi-tests
