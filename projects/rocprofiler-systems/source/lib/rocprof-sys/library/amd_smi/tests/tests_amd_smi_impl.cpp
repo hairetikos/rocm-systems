@@ -2,7 +2,6 @@
 // MIT License - See LICENSE file for details.
 
 #include "library/amd_smi/amd_smi_impl.hpp"
-#include "library/amd_smi/common.hpp"
 #include "library/amd_smi/processor.hpp"
 #include "library/amd_smi/service.hpp"
 #include "mock_driver.hpp"
