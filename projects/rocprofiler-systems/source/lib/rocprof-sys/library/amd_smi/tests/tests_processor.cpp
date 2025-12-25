@@ -367,34 +367,6 @@ TEST_F(processor_test, multiple_processors_have_different_indices)
     EXPECT_EQ(proc3.get_index(), 2u);
 }
 
-TEST_F(processor_test, print_supported_metrics_outputs_correctly)
-{
-    amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
-
-    amdsmi_power_info_t power_info{};
-    power_info.current_socket_power = 150000;
-    power_info.average_socket_power = 140000;
-
-    EXPECT_CALL(*m_mock_driver, get_power_info(handle, _))
-        .WillRepeatedly(
-            DoAll(SetArgPointee<1>(power_info), Return(AMDSMI_STATUS_SUCCESS)));
-
-    processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
-
-    std::stringstream buffer;
-    std::streambuf*   old_cout = std::cout.rdbuf(buffer.rdbuf());
-
-    proc.print_supported_metrics();
-
-    std::cout.rdbuf(old_cout);
-
-    std::string output = buffer.str();
-    EXPECT_NE(output.find("SUPPORTED SMI METRICS"), std::string::npos);
-    EXPECT_NE(output.find("Processor 0"), std::string::npos);
-    EXPECT_NE(output.find("current_socket_power"), std::string::npos);
-    EXPECT_NE(output.find("average_socket_power"), std::string::npos);
-}
-
 TEST_F(processor_test, vcn_activity_metrics_supported)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);

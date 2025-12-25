@@ -63,29 +63,27 @@ public:
         initialize_supported_metrics();
     }
 
-    enabled_metric get_supported_metrics() const { return m_supported_metrics; }
+    [[nodiscard]] enabled_metric get_supported_metrics() const
+    {
+        return m_supported_metrics;
+    }
 
-    processor_type_t get_processor_type() const { return m_processor_type; }
+    [[nodiscard]] processor_type_t get_processor_type() const { return m_processor_type; }
 
-    size_t get_index() const { return m_index; }
+    [[nodiscard]] size_t get_index() const { return m_index; }
 
-    amdsmi_processor_handle get_handle() const { return m_processor_handle; }
+    [[nodiscard]] amdsmi_processor_handle get_handle() const
+    {
+        return m_processor_handle;
+    }
 
-    bool is_enabled() const { return m_enabled; }
+    [[nodiscard]] bool is_enabled() const { return m_enabled; }
 
     void set_enabled(bool enabled) { m_enabled = enabled; }
 
-    bool is_disabled_due_to_error() const { return m_disabled_due_to_error; }
-
-    smi_metrics get_smi_metrics() const
+    [[nodiscard]] smi_metrics get_smi_metrics() const
     {
         smi_metrics metrics{};
-
-        if(m_disabled_due_to_error)
-        {
-            return metrics;
-        }
-
         collect_activity_metrics(metrics);
         collect_power_metrics(metrics);
         collect_temperature_metrics(metrics);
@@ -93,33 +91,6 @@ public:
         collect_gpu_metrics(metrics);
 
         return metrics;
-    }
-
-    void print_supported_metrics() const
-    {
-        std::cout << "=== SUPPORTED SMI METRICS (Processor " << m_index << ") ===\n";
-        std::cout << std::left << std::boolalpha;
-
-        auto print_metric = [](const char* name, bool supported) {
-            std::cout << "  " << std::setw(25) << name << ": " << supported << '\n';
-        };
-
-        print_metric("current_socket_power",
-                     m_supported_metrics.bits.current_socket_power);
-        print_metric("average_socket_power",
-                     m_supported_metrics.bits.average_socket_power);
-        print_metric("memory_usage", m_supported_metrics.bits.memory_usage);
-        print_metric("hotspot_temperature", m_supported_metrics.bits.hotspot_temperature);
-        print_metric("edge_temperature", m_supported_metrics.bits.edge_temperature);
-        print_metric("gfx_activity", m_supported_metrics.bits.gfx_activity);
-        print_metric("umc_activity", m_supported_metrics.bits.umc_activity);
-        print_metric("mm_activity", m_supported_metrics.bits.mm_activity);
-        print_metric("vcn_activity", m_supported_metrics.bits.vcn_activity);
-        print_metric("jpeg_activity", m_supported_metrics.bits.jpeg_activity);
-        print_metric("xgmi", m_supported_metrics.bits.xgmi);
-        print_metric("pcie", m_supported_metrics.bits.pcie);
-
-        std::cout << "=========================\n" << std::flush;
     }
 
 private:
@@ -372,10 +343,9 @@ private:
     std::shared_ptr<Driver> m_driver_api;
     amdsmi_processor_handle m_processor_handle;
     processor_type_t        m_processor_type;
-    enabled_metric          m_supported_metrics{};
+    enabled_metric          m_supported_metrics;
     size_t                  m_index;
-    bool                    m_enabled               = true;
-    bool                    m_disabled_due_to_error = false;
+    bool                    m_enabled;
 };
 
 #endif  // ROCPROFSYS_USE_ROCM > 0
