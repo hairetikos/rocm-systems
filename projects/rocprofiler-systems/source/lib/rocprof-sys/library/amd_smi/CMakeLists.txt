@@ -14,6 +14,6 @@ target_link_libraries(
     rocprofiler-systems-amd-smi-library PRIVATE rocprofiler-systems-googletest-library rocprofiler-systems-core-library
 )
 
-# if(ROCPROFSYS_BUILD_TESTING)
-#     add_subdirectory(tests)
-# endif()
+if(ROCPROFSYS_BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

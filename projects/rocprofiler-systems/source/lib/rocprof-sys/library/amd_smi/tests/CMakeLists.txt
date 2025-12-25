@@ -29,5 +29,7 @@ add_library(amd-smi-tests OBJECT ${amd_smi_tests_sources})
 
 target_link_libraries(
     amd-smi-tests
-    PRIVATE rocprofiler-systems-googletest-library rocprofiler-systems-core-library
+    PRIVATE rocprofiler-systems-googletest-library rocprofiler-systems-core-library rocprofiler-systems-interface-library
 )
+
+target_include_directories(amd-smi-tests PRIVATE ${PROJECT_SOURCE_DIR}/source/lib/core ${PROJECT_SOURCE_DIR}/source/lib/rocprof-sys)

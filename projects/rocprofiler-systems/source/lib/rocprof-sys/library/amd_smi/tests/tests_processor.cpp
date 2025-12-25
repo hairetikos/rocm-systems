@@ -11,6 +11,11 @@
 
 #if ROCPROFSYS_USE_ROCM > 0
 
+using ::testing::_;
+using ::testing::DoAll;
+using ::testing::Return;
+using ::testing::SetArgPointee;
+
 namespace rocprofsys
 {
 namespace amd_smi
@@ -18,7 +23,7 @@ namespace amd_smi
 namespace testing
 {
 
-class ProcessorTest : public ::testing::Test
+class processor_test : public ::testing::Test
 {
 protected:
     void SetUp() override
@@ -32,7 +37,7 @@ protected:
     std::shared_ptr<::testing::NiceMock<mock_driver>> m_mock_driver;
 };
 
-TEST_F(ProcessorTest, ConstructorInitializesFields)
+TEST_F(processor_test, constructor_initializes_fields)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
     processor_type_t        type   = AMDSMI_PROCESSOR_TYPE_AMD_GPU;
@@ -47,7 +52,7 @@ TEST_F(ProcessorTest, ConstructorInitializesFields)
     EXPECT_FALSE(proc.is_disabled_due_to_error());
 }
 
-TEST_F(ProcessorTest, ConstructorWithDifferentProcessorTypes)
+TEST_F(processor_test, constructor_with_different_processor_types)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
@@ -60,7 +65,7 @@ TEST_F(ProcessorTest, ConstructorWithDifferentProcessorTypes)
     EXPECT_EQ(cpu_proc.get_processor_type(), AMDSMI_PROCESSOR_TYPE_AMD_CPU);
 }
 
-TEST_F(ProcessorTest, SetEnabledChangesState)
+TEST_F(processor_test, set_enabled_changes_state)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
     processor<mock_driver>  proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
@@ -74,13 +79,8 @@ TEST_F(ProcessorTest, SetEnabledChangesState)
     EXPECT_TRUE(proc.is_enabled());
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsReturnsValidActivityMetrics)
+TEST_F(processor_test, get_smi_metrics_returns_valid_activity_metrics)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_engine_usage_t expected_activity{};
@@ -89,7 +89,7 @@ TEST_F(ProcessorTest, GetSmiMetricsReturnsValidActivityMetrics)
     expected_activity.mm_activity  = 20;
 
     EXPECT_CALL(*m_mock_driver, get_activity(handle, _))
-        .WillOnce(
+        .WillRepeatedly(
             DoAll(SetArgPointee<1>(expected_activity), Return(AMDSMI_STATUS_SUCCESS)));
 
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
@@ -101,13 +101,8 @@ TEST_F(ProcessorTest, GetSmiMetricsReturnsValidActivityMetrics)
     EXPECT_EQ(metrics.mm_activity, 20u);
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsReturnsPowerMetrics)
+TEST_F(processor_test, get_smi_metrics_returns_power_metrics)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_power_info_t expected_power{};
@@ -126,13 +121,8 @@ TEST_F(ProcessorTest, GetSmiMetricsReturnsPowerMetrics)
     EXPECT_EQ(metrics.average_socket_power, 140000u);
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsReturnsTemperatureMetrics)
+TEST_F(processor_test, get_smi_metrics_returns_temperature_metrics)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     EXPECT_CALL(*m_mock_driver,
@@ -153,13 +143,8 @@ TEST_F(ProcessorTest, GetSmiMetricsReturnsTemperatureMetrics)
     EXPECT_EQ(metrics.edge_temperature, 65000);
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsReturnsMemoryMetrics)
+TEST_F(processor_test, get_smi_metrics_returns_memory_metrics)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     uint64_t expected_mem_usage = 4096000000ULL;
@@ -175,13 +160,8 @@ TEST_F(ProcessorTest, GetSmiMetricsReturnsMemoryMetrics)
     EXPECT_EQ(metrics.memory_usage, expected_mem_usage);
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsReturnsGpuMetricsPcie)
+TEST_F(processor_test, get_smi_metrics_returns_gpu_metrics_pcie)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t expected_gpu_metrics{};
@@ -204,13 +184,8 @@ TEST_F(ProcessorTest, GetSmiMetricsReturnsGpuMetricsPcie)
     EXPECT_EQ(metrics.pcie_bandwidth_inst, 50000ULL);
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsReturnsGpuMetricsXgmi)
+TEST_F(processor_test, get_smi_metrics_returns_gpu_metrics_xgmi)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t expected_gpu_metrics{};
@@ -233,13 +208,8 @@ TEST_F(ProcessorTest, GetSmiMetricsReturnsGpuMetricsXgmi)
     EXPECT_EQ(metrics.xgmi_write_data_acc[0], 600000ULL);
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsHandlesNotSupportedValues)
+TEST_F(processor_test, get_smi_metrics_handles_not_supported_values)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics_with_unsupported{};
@@ -269,11 +239,8 @@ TEST_F(ProcessorTest, GetSmiMetricsHandlesNotSupportedValues)
     EXPECT_FALSE(supported.bits.xgmi);
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsHandlesNotSupported)
+TEST_F(processor_test, get_smi_metrics_handles_not_supported)
 {
-    using ::testing::_;
-    using ::testing::Return;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     EXPECT_CALL(*m_mock_driver, get_activity(handle, _))
@@ -294,13 +261,8 @@ TEST_F(ProcessorTest, GetSmiMetricsHandlesNotSupported)
     EXPECT_EQ(metrics.memory_usage, 0u);
 }
 
-TEST_F(ProcessorTest, GetSupportedMetricsReturnsCorrectFlags)
+TEST_F(processor_test, get_supported_metrics_returns_correct_flags)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_power_info_t power_info{};
@@ -332,11 +294,8 @@ TEST_F(ProcessorTest, GetSupportedMetricsReturnsCorrectFlags)
     EXPECT_TRUE(supported.bits.edge_temperature);
 }
 
-TEST_F(ProcessorTest, GetSupportedMetricsWhenPowerNotSupported)
+TEST_F(processor_test, get_supported_metrics_when_power_not_supported)
 {
-    using ::testing::_;
-    using ::testing::Return;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     EXPECT_CALL(*m_mock_driver, get_power_info(handle, _))
@@ -364,13 +323,8 @@ TEST_F(ProcessorTest, GetSupportedMetricsWhenPowerNotSupported)
     EXPECT_FALSE(supported.bits.edge_temperature);
 }
 
-TEST_F(ProcessorTest, GetSupportedMetricsWithMetricValueNotSupported)
+TEST_F(processor_test, get_supported_metrics_with_metric_value_not_supported)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_power_info_t power_info{};
@@ -395,7 +349,7 @@ TEST_F(ProcessorTest, GetSupportedMetricsWithMetricValueNotSupported)
     EXPECT_FALSE(supported.bits.gfx_activity);
 }
 
-TEST_F(ProcessorTest, MultipleProcessorsHaveDifferentIndices)
+TEST_F(processor_test, multiple_processors_have_different_indices)
 {
     amdsmi_processor_handle handle1 = reinterpret_cast<amdsmi_processor_handle>(0x1);
     amdsmi_processor_handle handle2 = reinterpret_cast<amdsmi_processor_handle>(0x2);
@@ -413,13 +367,8 @@ TEST_F(ProcessorTest, MultipleProcessorsHaveDifferentIndices)
     EXPECT_EQ(proc3.get_index(), 2u);
 }
 
-TEST_F(ProcessorTest, PrintSupportedMetricsOutputsCorrectly)
+TEST_F(processor_test, print_supported_metrics_outputs_correctly)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_power_info_t power_info{};
@@ -446,13 +395,8 @@ TEST_F(ProcessorTest, PrintSupportedMetricsOutputsCorrectly)
     EXPECT_NE(output.find("average_socket_power"), std::string::npos);
 }
 
-TEST_F(ProcessorTest, VcnActivityMetricsSupported)
+TEST_F(processor_test, vcn_activity_metrics_supported)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -468,13 +412,8 @@ TEST_F(ProcessorTest, VcnActivityMetricsSupported)
     EXPECT_TRUE(supported.bits.vcn_activity);
 }
 
-TEST_F(ProcessorTest, JpegActivityMetricsSupported)
+TEST_F(processor_test, jpeg_activity_metrics_supported)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -490,13 +429,8 @@ TEST_F(ProcessorTest, JpegActivityMetricsSupported)
     EXPECT_TRUE(supported.bits.jpeg_activity);
 }
 
-TEST_F(ProcessorTest, VcnAndJpegMetricsNotSupportedWithMaxValue)
+TEST_F(processor_test, vcn_and_jpeg_metrics_not_supported_with_max_value)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -523,13 +457,8 @@ TEST_F(ProcessorTest, VcnAndJpegMetricsNotSupportedWithMaxValue)
     EXPECT_FALSE(supported.bits.jpeg_activity);
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsCollectsVcnActivity)
+TEST_F(processor_test, get_smi_metrics_collects_vcn_activity)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -548,13 +477,8 @@ TEST_F(ProcessorTest, GetSmiMetricsCollectsVcnActivity)
     EXPECT_EQ(metrics.xcp_stats[0].vcn_busy[1], 60u);
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsCollectsJpegActivity)
+TEST_F(processor_test, get_smi_metrics_collects_jpeg_activity)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -573,13 +497,8 @@ TEST_F(ProcessorTest, GetSmiMetricsCollectsJpegActivity)
     EXPECT_EQ(metrics.xcp_stats[0].jpeg_busy[1], 80u);
 }
 
-TEST_F(ProcessorTest, XgmiMetricsSupportedWhenLinkWidthValid)
+TEST_F(processor_test, xgmi_metrics_supported_when_link_width_valid)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -600,13 +519,8 @@ TEST_F(ProcessorTest, XgmiMetricsSupportedWhenLinkWidthValid)
     EXPECT_TRUE(supported.bits.xgmi);
 }
 
-TEST_F(ProcessorTest, XgmiMetricsSupportedWhenReadDataValid)
+TEST_F(processor_test, xgmi_metrics_supported_when_read_data_valid)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -628,13 +542,8 @@ TEST_F(ProcessorTest, XgmiMetricsSupportedWhenReadDataValid)
     EXPECT_TRUE(supported.bits.xgmi);
 }
 
-TEST_F(ProcessorTest, PcieMetricsSupportedWhenLinkWidthValid)
+TEST_F(processor_test, pcie_metrics_supported_when_link_width_valid)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -653,13 +562,8 @@ TEST_F(ProcessorTest, PcieMetricsSupportedWhenLinkWidthValid)
     EXPECT_TRUE(supported.bits.pcie);
 }
 
-TEST_F(ProcessorTest, PcieMetricsSupportedWhenBandwidthAccValid)
+TEST_F(processor_test, pcie_metrics_supported_when_bandwidth_acc_valid)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -678,13 +582,8 @@ TEST_F(ProcessorTest, PcieMetricsSupportedWhenBandwidthAccValid)
     EXPECT_TRUE(supported.bits.pcie);
 }
 
-TEST_F(ProcessorTest, ActivityMetricsFailedDuringCollection)
+TEST_F(processor_test, activity_metrics_failed_during_collection)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_engine_usage_t init_activity{};
@@ -701,13 +600,8 @@ TEST_F(ProcessorTest, ActivityMetricsFailedDuringCollection)
     EXPECT_EQ(metrics.gfx_activity, 0u);
 }
 
-TEST_F(ProcessorTest, PowerMetricsFailedDuringCollection)
+TEST_F(processor_test, power_metrics_failed_during_collection)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_power_info_t init_power{};
@@ -726,13 +620,8 @@ TEST_F(ProcessorTest, PowerMetricsFailedDuringCollection)
     EXPECT_EQ(metrics.average_socket_power, 0u);
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsWithAllXgmiLinks)
+TEST_F(processor_test, get_smi_metrics_with_all_xgmi_links)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -760,13 +649,8 @@ TEST_F(ProcessorTest, GetSmiMetricsWithAllXgmiLinks)
     }
 }
 
-TEST_F(ProcessorTest, GetSmiMetricsWithMultipleXcpStats)
+TEST_F(processor_test, get_smi_metrics_with_multiple_xcp_stats)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
@@ -792,13 +676,8 @@ TEST_F(ProcessorTest, GetSmiMetricsWithMultipleXcpStats)
     }
 }
 
-TEST_F(ProcessorTest, TemperatureMetricReturnedAsNotSupportedValue)
+TEST_F(processor_test, temperature_metric_returned_as_not_supported_value)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     EXPECT_CALL(*m_mock_driver, get_temperature_metric(handle, _, _, _))
@@ -814,13 +693,8 @@ TEST_F(ProcessorTest, TemperatureMetricReturnedAsNotSupportedValue)
     EXPECT_FALSE(supported.bits.edge_temperature);
 }
 
-TEST_F(ProcessorTest, EdgeTemperatureSupportedButHotspotNot)
+TEST_F(processor_test, edge_temperature_supported_but_hotspot_not)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     EXPECT_CALL(*m_mock_driver,
@@ -839,7 +713,7 @@ TEST_F(ProcessorTest, EdgeTemperatureSupportedButHotspotNot)
     EXPECT_TRUE(supported.bits.edge_temperature);
 }
 
-TEST_F(ProcessorTest, SharedDriverAcrossMultipleProcessors)
+TEST_F(processor_test, shared_driver_across_multiple_processors)
 {
     amdsmi_processor_handle handle1 = reinterpret_cast<amdsmi_processor_handle>(0x1);
     amdsmi_processor_handle handle2 = reinterpret_cast<amdsmi_processor_handle>(0x2);
@@ -856,13 +730,8 @@ TEST_F(ProcessorTest, SharedDriverAcrossMultipleProcessors)
     EXPECT_EQ(proc2->get_handle(), handle2);
 }
 
-TEST_F(ProcessorTest, UmcAndMmActivityAlwaysSupportedWhenActivitySucceeds)
+TEST_F(processor_test, umc_and_mm_activity_always_supported_when_activity_succeeds)
 {
-    using ::testing::_;
-    using ::testing::DoAll;
-    using ::testing::Return;
-    using ::testing::SetArgPointee;
-
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_engine_usage_t activity{};
