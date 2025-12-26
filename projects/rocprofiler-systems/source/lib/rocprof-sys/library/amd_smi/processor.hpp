@@ -77,10 +77,6 @@ public:
         return m_processor_handle;
     }
 
-    [[nodiscard]] bool is_enabled() const { return m_enabled; }
-
-    void set_enabled(bool enabled) { m_enabled = enabled; }
-
     [[nodiscard]] smi_metrics get_smi_metrics() const
     {
         smi_metrics metrics{};
@@ -345,7 +341,6 @@ private:
     processor_type_t        m_processor_type;
     enabled_metric          m_supported_metrics;
     size_t                  m_index;
-    bool                    m_enabled;
 };
 
 #endif  // ROCPROFSYS_USE_ROCM > 0

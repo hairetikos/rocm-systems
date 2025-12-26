@@ -84,11 +84,14 @@ public:
     service(service&&)                 = default;
     service& operator=(service&&)      = default;
 
-    const version& get_version() const { return m_version; }
+    [[nodiscard]] const version& get_version() const noexcept { return m_version; }
 
-    std::shared_ptr<driver_t> get_driver() const { return m_driver_api; }
+    [[nodiscard]] std::shared_ptr<driver_t> get_driver() const noexcept
+    {
+        return m_driver_api;
+    }
 
-    processor_vector_t get_processors(const filter_func_t& filter = nullptr)
+    [[nodiscard]] processor_vector_t get_processors(const filter_func_t& filter = nullptr)
     {
         processor_vector_t processors;
 
@@ -114,14 +117,15 @@ public:
         return (filter != nullptr) ? filter(processors) : processors;
     }
 
-    processor_vector_t get_processors_by_spec(const std::string& device_spec)
+    [[nodiscard]] processor_vector_t get_processors_by_spec(
+        const std::string& device_spec)
     {
         auto all_processors = get_processors();
         return filter_processors_by_spec(all_processors, device_spec);
     }
 
-    static processor_vector_t filter_processors_by_spec(processor_vector_t& processors,
-                                                        const std::string&  device_spec)
+    [[nodiscard]] static processor_vector_t filter_processors_by_spec(
+        const processor_vector_t& processors, const std::string& device_spec)
     {
         std::string spec = device_spec;
         std::transform(spec.begin(), spec.end(), spec.begin(),
@@ -153,20 +157,27 @@ public:
                 continue;
             }
 
-            // Check for range (e.g., "0-3")
-            auto dash_pos = token.find('-');
-            if(dash_pos != std::string::npos && dash_pos > 0)
+            try
             {
-                auto start = std::stoul(token.substr(0, dash_pos));
-                auto end   = std::stoul(token.substr(dash_pos + 1));
-                for(auto i = start; i <= end; ++i)
+                // Check for range (e.g., "0-3")
+                auto dash_pos = token.find('-');
+                if(dash_pos != std::string::npos && dash_pos > 0)
                 {
-                    enabled_indices.insert(i);
+                    auto start = std::stoul(token.substr(0, dash_pos));
+                    auto end   = std::stoul(token.substr(dash_pos + 1));
+                    for(auto i = start; i <= end; ++i)
+                    {
+                        enabled_indices.insert(i);
+                    }
                 }
-            }
-            else
+                else
+                {
+                    enabled_indices.insert(std::stoul(token));
+                }
+            } catch(const std::exception&)
             {
-                enabled_indices.insert(std::stoul(token));
+                // Skip invalid tokens
+                continue;
             }
         }
 
@@ -219,7 +230,6 @@ private:
         return handles;
     }
 
-private:
     std::shared_ptr<driver_t> m_driver_api;
     version                   m_version{};
 };

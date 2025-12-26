@@ -23,6 +23,7 @@
 set(amd_smi_tests_sources
     tests_amd_smi_impl.cpp
     tests_processor.cpp
+    tests_service.cpp
 )
 
 add_library(amd-smi-tests OBJECT ${amd_smi_tests_sources})

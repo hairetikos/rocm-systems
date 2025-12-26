@@ -48,8 +48,6 @@ TEST_F(processor_test, constructor_initializes_fields)
     EXPECT_EQ(proc.get_handle(), handle);
     EXPECT_EQ(proc.get_processor_type(), type);
     EXPECT_EQ(proc.get_index(), index);
-    EXPECT_TRUE(proc.is_enabled());
-    EXPECT_FALSE(proc.is_disabled_due_to_error());
 }
 
 TEST_F(processor_test, constructor_with_different_processor_types)
@@ -63,20 +61,6 @@ TEST_F(processor_test, constructor_with_different_processor_types)
     processor<mock_driver> cpu_proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_CPU,
                                     1);
     EXPECT_EQ(cpu_proc.get_processor_type(), AMDSMI_PROCESSOR_TYPE_AMD_CPU);
-}
-
-TEST_F(processor_test, set_enabled_changes_state)
-{
-    amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
-    processor<mock_driver>  proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
-
-    EXPECT_TRUE(proc.is_enabled());
-
-    proc.set_enabled(false);
-    EXPECT_FALSE(proc.is_enabled());
-
-    proc.set_enabled(true);
-    EXPECT_TRUE(proc.is_enabled());
 }
 
 TEST_F(processor_test, get_smi_metrics_returns_valid_activity_metrics)
