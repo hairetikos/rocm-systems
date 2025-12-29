@@ -309,23 +309,6 @@ TEST_F(AmdSmiImplTest, DeviceFilterSpecificReturnsSelectedProcessors)
     EXPECT_EQ(processors[1]->get_index(), 2u);
 }
 
-TEST_F(AmdSmiImplTest, ShutdownClearsProcessors)
-{
-    auto proc = std::make_shared<processor<mock_driver>>(
-        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x1),
-        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
-    mock_service::add_processor(proc);
-
-    amd_smi_impl<test_config> impl;
-    impl.setup();
-
-    EXPECT_EQ(impl.get_processor_count(), 1u);
-
-    impl.shutdown();
-
-    EXPECT_EQ(impl.get_processor_count(), 0u);
-}
-
 }  // namespace testing
 }  // namespace amd_smi
 }  // namespace rocprofsys

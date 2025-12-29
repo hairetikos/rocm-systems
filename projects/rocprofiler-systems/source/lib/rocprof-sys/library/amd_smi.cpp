@@ -165,6 +165,7 @@ shutdown()
 void
 post_process()
 {
+    printf("Post-processing amd-smi...\n");
     g_smi_impl.post_process();
 }
 

@@ -195,6 +195,9 @@ struct perfetto_policy
             return;
         }
 
+        printf("Post-processing %zu amd-smi samples from device %zu\n",
+               get_perfetto_bundle()[device_index]->size(), device_index);
+
         using counter_track = perfetto_counter_track<smi_metrics>;
 
         auto&       samples      = *get_perfetto_bundle()[device_index];
