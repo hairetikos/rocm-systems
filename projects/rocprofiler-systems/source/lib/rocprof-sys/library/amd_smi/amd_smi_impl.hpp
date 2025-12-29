@@ -62,11 +62,11 @@ struct amd_smi_impl
         m_smi_service = SmiServiceFactory::create_smi_service();
         auto _version = m_smi_service->get_version();
 
-        ROCPROFSYS_VERBOSE_F(0, "AMD SMI version: %u.%u.%u - str: %s.\n",
-                             _version.numeric_representation.major,
-                             _version.numeric_representation.minor,
-                             _version.numeric_representation.release,
-                             _version.string_representation.c_str());
+        // ROCPROFSYS_VERBOSE_F(0, "AMD SMI version: %u.%u.%u - str: %s.\n",
+        //                      _version.numeric_representation.major,
+        //                      _version.numeric_representation.minor,
+        //                      _version.numeric_representation.release,
+        //                      _version.string_representation.c_str());
 
         m_gpu_processors =
             m_smi_service->get_processors([](const processor_vector_t& processors) {
@@ -90,10 +90,8 @@ struct amd_smi_impl
 
         m_enabled_metrics = SettingsApi::get_enabled_metrics();
 
-        ROCPROFSYS_VERBOSE_F(1, "Enabled %zu GPU processors for AMD SMI sampling\n",
-                             m_gpu_processors.size());
-
-        printf("%s", to_string(m_enabled_metrics).c_str());
+        // ROCPROFSYS_VERBOSE_F(1, "Enabled %zu GPU processors for AMD SMI sampling\n",
+        //  m_gpu_processors.size());
 
         for(const auto& processor : m_gpu_processors)
         {
@@ -167,6 +165,7 @@ struct amd_smi_impl
         {
             m_smi_service->shutdown();
             m_smi_service.reset();
+            m_gpu_processors.clear();
         }
     }
 
