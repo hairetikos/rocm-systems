@@ -31,13 +31,10 @@
 #include "library/amd_smi/common.hpp"
 #include "library/amd_smi/processor.hpp"
 
-#include <algorithm>
 #include <cctype>
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <set>
-#include <sstream>
 #include <string>
 #include <vector>
 
