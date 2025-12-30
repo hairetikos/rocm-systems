@@ -39,7 +39,6 @@
 #include <cstdint>
 #include <cstring>
 #include <optional>
-#include <vector>
 
 namespace rocprofsys
 {
@@ -117,6 +116,47 @@ struct rocpd_policy
             add_vcn_track(xcp);
             add_jpeg_track(xcp);
         }
+
+        // XGMI tracks
+        trace_cache::get_metadata_registry().add_track(
+            { trace_cache::info::annotate_with_device_id<
+                  category::amd_smi_xgmi_link_width>(gpu_id),
+              thread_id, "{}" });
+        trace_cache::get_metadata_registry().add_track(
+            { trace_cache::info::annotate_with_device_id<
+                  category::amd_smi_xgmi_link_speed>(gpu_id),
+              thread_id, "{}" });
+
+        for(int link = 0; link < AMDSMI_MAX_NUM_XGMI_LINKS; ++link)
+        {
+            auto read_name = trace_cache::info::annotate_with_device_id<
+                category::amd_smi_xgmi_read_data>(gpu_id, std::nullopt, link);
+            trace_cache::get_metadata_registry().add_track(
+                { read_name.c_str(), thread_id, "{}" });
+
+            auto write_name = trace_cache::info::annotate_with_device_id<
+                category::amd_smi_xgmi_write_data>(gpu_id, std::nullopt, link);
+            trace_cache::get_metadata_registry().add_track(
+                { write_name.c_str(), thread_id, "{}" });
+        }
+
+        // PCIE tracks
+        trace_cache::get_metadata_registry().add_track(
+            { trace_cache::info::annotate_with_device_id<
+                  category::amd_smi_pcie_link_width>(gpu_id),
+              thread_id, "{}" });
+        trace_cache::get_metadata_registry().add_track(
+            { trace_cache::info::annotate_with_device_id<
+                  category::amd_smi_pcie_link_speed>(gpu_id),
+              thread_id, "{}" });
+        trace_cache::get_metadata_registry().add_track(
+            { trace_cache::info::annotate_with_device_id<
+                  category::amd_smi_pcie_bandwidth_acc>(gpu_id),
+              thread_id, "{}" });
+        trace_cache::get_metadata_registry().add_track(
+            { trace_cache::info::annotate_with_device_id<
+                  category::amd_smi_pcie_bandwidth_inst>(gpu_id),
+              thread_id, "{}" });
     }
 
     static void initialize_smi_pmc_metadata(size_t gpu_id)
@@ -176,6 +216,64 @@ struct rocpd_policy
               trait::name<category::amd_smi_memory_usage>::description, LONG_DESCRIPTION,
               COMPONENT, tim::units::mem_repr(tim::units::megabyte),
               rocprofsys::trace_cache::ABSOLUTE, BLOCK, EXPRESSION, 0, 0 });
+
+        // XGMI PMC metadata
+        trace_cache::get_metadata_registry().add_pmc_info(
+            { agent_type::GPU, gpu_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+              trait::name<category::amd_smi_xgmi_link_width>::value, "XGMI Width",
+              trait::name<category::amd_smi_xgmi_link_width>::description,
+              LONG_DESCRIPTION, COMPONENT, "lanes", rocprofsys::trace_cache::ABSOLUTE,
+              BLOCK, EXPRESSION, 0, 0 });
+
+        trace_cache::get_metadata_registry().add_pmc_info(
+            { agent_type::GPU, gpu_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+              trait::name<category::amd_smi_xgmi_link_speed>::value, "XGMI Speed",
+              trait::name<category::amd_smi_xgmi_link_speed>::description,
+              LONG_DESCRIPTION, COMPONENT, "Mbps", rocprofsys::trace_cache::ABSOLUTE,
+              BLOCK, EXPRESSION, 0, 0 });
+
+        trace_cache::get_metadata_registry().add_pmc_info(
+            { agent_type::GPU, gpu_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+              trait::name<category::amd_smi_xgmi_read_data>::value, "XGMI Read",
+              trait::name<category::amd_smi_xgmi_read_data>::description,
+              LONG_DESCRIPTION, COMPONENT, "KB", rocprofsys::trace_cache::ABSOLUTE, BLOCK,
+              EXPRESSION, 0, 0 });
+
+        trace_cache::get_metadata_registry().add_pmc_info(
+            { agent_type::GPU, gpu_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+              trait::name<category::amd_smi_xgmi_write_data>::value, "XGMI Write",
+              trait::name<category::amd_smi_xgmi_write_data>::description,
+              LONG_DESCRIPTION, COMPONENT, "KB", rocprofsys::trace_cache::ABSOLUTE, BLOCK,
+              EXPRESSION, 0, 0 });
+
+        // PCIE PMC metadata
+        trace_cache::get_metadata_registry().add_pmc_info(
+            { agent_type::GPU, gpu_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+              trait::name<category::amd_smi_pcie_link_width>::value, "PCIe Width",
+              trait::name<category::amd_smi_pcie_link_width>::description,
+              LONG_DESCRIPTION, COMPONENT, "lanes", rocprofsys::trace_cache::ABSOLUTE,
+              BLOCK, EXPRESSION, 0, 0 });
+
+        trace_cache::get_metadata_registry().add_pmc_info(
+            { agent_type::GPU, gpu_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+              trait::name<category::amd_smi_pcie_link_speed>::value, "PCIe Speed",
+              trait::name<category::amd_smi_pcie_link_speed>::description,
+              LONG_DESCRIPTION, COMPONENT, "MT/s", rocprofsys::trace_cache::ABSOLUTE,
+              BLOCK, EXPRESSION, 0, 0 });
+
+        trace_cache::get_metadata_registry().add_pmc_info(
+            { agent_type::GPU, gpu_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+              trait::name<category::amd_smi_pcie_bandwidth_acc>::value, "PCIe BW Acc",
+              trait::name<category::amd_smi_pcie_bandwidth_acc>::description,
+              LONG_DESCRIPTION, COMPONENT, "bytes", rocprofsys::trace_cache::ABSOLUTE,
+              BLOCK, EXPRESSION, 0, 0 });
+
+        trace_cache::get_metadata_registry().add_pmc_info(
+            { agent_type::GPU, gpu_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+              trait::name<category::amd_smi_pcie_bandwidth_inst>::value, "PCIe BW Inst",
+              trait::name<category::amd_smi_pcie_bandwidth_inst>::description,
+              LONG_DESCRIPTION, COMPONENT, "bytes/s", rocprofsys::trace_cache::ABSOLUTE,
+              BLOCK, EXPRESSION, 0, 0 });
     }
 
     static void store_sample(size_t device_id, const enabled_metric& supported_metrics,
