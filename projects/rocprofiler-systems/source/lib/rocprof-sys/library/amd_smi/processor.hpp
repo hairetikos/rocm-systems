@@ -243,6 +243,14 @@ private:
             }
         }
 
+        static uint16_t once_flag = 0;
+        if(once_flag < 4)
+        {
+            once_flag++;
+            printf("XGMI link width: %d, supported: %d\n", metrics.xgmi_link_width,
+                   m_supported_metrics.bits.xgmi);
+        }
+
         if(m_supported_metrics.bits.pcie)
         {
             metrics.pcie_link_width     = (gpu_metrics.pcie_link_width != UINT16_MAX)
@@ -329,10 +337,19 @@ private:
                         std::end(gpu_metrics.xgmi_read_data_acc),
                         [](uint64_t v) { return v != UINT64_MAX; });
 
+        printf("XGMI read data acc: %d, supported: %d\n",
+               std::any_of(std::begin(gpu_metrics.xgmi_read_data_acc),
+                           std::end(gpu_metrics.xgmi_read_data_acc),
+                           [](uint64_t v) { return v != UINT64_MAX; }),
+               m_supported_metrics.bits.xgmi);
+
         m_supported_metrics.bits.pcie = (gpu_metrics.pcie_link_width != UINT16_MAX) ||
                                         (gpu_metrics.pcie_link_speed != UINT16_MAX) ||
                                         (gpu_metrics.pcie_bandwidth_acc != UINT64_MAX) ||
                                         (gpu_metrics.pcie_bandwidth_inst != UINT64_MAX);
+
+        printf("PCIE link width: %d, supported: %d\n", gpu_metrics.pcie_link_width,
+               m_supported_metrics.bits.pcie);
     }
 
 private:
