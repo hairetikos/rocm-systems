@@ -162,10 +162,10 @@ TEST_F(processor_test, get_smi_metrics_returns_gpu_metrics_pcie)
 
     auto metrics = proc.get_smi_metrics();
 
-    EXPECT_EQ(metrics.pcie_link_width, 16u);
-    EXPECT_EQ(metrics.pcie_link_speed, 5000u);
-    EXPECT_EQ(metrics.pcie_bandwidth_acc, 1000000ULL);
-    EXPECT_EQ(metrics.pcie_bandwidth_inst, 50000ULL);
+    EXPECT_EQ(metrics.pcie_info.link.width, 16u);
+    EXPECT_EQ(metrics.pcie_info.link.speed, 5000u);
+    EXPECT_EQ(metrics.pcie_info.bandwidth.acc, 1000000ULL);
+    EXPECT_EQ(metrics.pcie_info.bandwidth.inst, 50000ULL);
 }
 
 TEST_F(processor_test, get_smi_metrics_returns_gpu_metrics_xgmi)
@@ -186,10 +186,10 @@ TEST_F(processor_test, get_smi_metrics_returns_gpu_metrics_xgmi)
 
     auto metrics = proc.get_smi_metrics();
 
-    EXPECT_EQ(metrics.xgmi_link_width, 8u);
-    EXPECT_EQ(metrics.xgmi_link_speed, 25000u);
-    EXPECT_EQ(metrics.xgmi_read_data_acc[0], 500000ULL);
-    EXPECT_EQ(metrics.xgmi_write_data_acc[0], 600000ULL);
+    EXPECT_EQ(metrics.xgmi_info.link.width, 8u);
+    EXPECT_EQ(metrics.xgmi_info.link.speed, 25000u);
+    EXPECT_EQ(metrics.xgmi_info.data_acc.read[0], 500000ULL);
+    EXPECT_EQ(metrics.xgmi_info.data_acc.write[0], 600000ULL);
 }
 
 TEST_F(processor_test, get_smi_metrics_handles_not_supported_values)
@@ -600,8 +600,8 @@ TEST_F(processor_test, get_smi_metrics_with_all_xgmi_links)
 
     for(size_t i = 0; i < AMDSMI_MAX_NUM_XGMI_LINKS; ++i)
     {
-        EXPECT_EQ(metrics.xgmi_read_data_acc[i], (i + 1) * 1000);
-        EXPECT_EQ(metrics.xgmi_write_data_acc[i], (i + 1) * 2000);
+        EXPECT_EQ(metrics.xgmi_info.data_acc.read[i], (i + 1) * 1000);
+        EXPECT_EQ(metrics.xgmi_info.data_acc.write[i], (i + 1) * 2000);
     }
 }
 

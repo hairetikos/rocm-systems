@@ -1140,7 +1140,7 @@ perfetto_processor_t::handle([[maybe_unused]] const amd_smi_sample& _amd_smi)
             }
             TRACE_COUNTER("device_xgmi_link_width",
                           amd_smi_xgmi_link_width_track::at(_device_id, 0), _ts,
-                          static_cast<double>(gpu_metrics.xgmi_link_width));
+                          static_cast<double>(gpu_metrics.xgmi_info.link.width));
 
             if(!amd_smi_xgmi_link_speed_track::exists(_device_id))
             {
@@ -1149,13 +1149,13 @@ perfetto_processor_t::handle([[maybe_unused]] const amd_smi_sample& _amd_smi)
             }
             TRACE_COUNTER("device_xgmi_link_speed",
                           amd_smi_xgmi_link_speed_track::at(_device_id, 0), _ts,
-                          static_cast<double>(gpu_metrics.xgmi_link_speed));
+                          static_cast<double>(gpu_metrics.xgmi_info.link.speed));
 
             insert_xgmi_vector_metrics(category::amd_smi_xgmi_read_data{},
-       is_xgmi_enabled, gpu_metrics.xgmi_read_data_acc);
+       is_xgmi_enabled, gpu_metrics.xgmi_info.data_acc.read);
 
             insert_xgmi_vector_metrics(category::amd_smi_xgmi_write_data{},
-       is_xgmi_enabled, gpu_metrics.xgmi_write_data_acc);
+       is_xgmi_enabled, gpu_metrics.xgmi_info.data_acc.write);
         }
 
         // Insert PCIe metrics
@@ -1172,7 +1172,7 @@ perfetto_processor_t::handle([[maybe_unused]] const amd_smi_sample& _amd_smi)
             }
             TRACE_COUNTER("device_pcie_link_width",
                           amd_smi_pcie_link_width_track::at(_device_id, 0), _ts,
-                          static_cast<double>(gpu_metrics.pcie_link_width));
+                          static_cast<double>(gpu_metrics.pcie_info.link.width));
 
             if(!amd_smi_pcie_link_speed_track::exists(_device_id))
             {
@@ -1181,7 +1181,7 @@ perfetto_processor_t::handle([[maybe_unused]] const amd_smi_sample& _amd_smi)
             }
             TRACE_COUNTER("device_pcie_link_speed",
                           amd_smi_pcie_link_speed_track::at(_device_id, 0), _ts,
-                          static_cast<double>(gpu_metrics.pcie_link_speed));
+                          static_cast<double>(gpu_metrics.pcie_info.link.speed));
 
             if(!amd_smi_pcie_bandwidth_acc_track::exists(_device_id))
             {
@@ -1190,7 +1190,7 @@ perfetto_processor_t::handle([[maybe_unused]] const amd_smi_sample& _amd_smi)
             }
             TRACE_COUNTER("device_pcie_bandwidth_acc",
                           amd_smi_pcie_bandwidth_acc_track::at(_device_id, 0), _ts,
-                          static_cast<double>(gpu_metrics.pcie_bandwidth_acc));
+                          static_cast<double>(gpu_metrics.pcie_info.bandwidth.acc));
 
             if(!amd_smi_pcie_bandwidth_inst_track::exists(_device_id))
             {
@@ -1199,7 +1199,7 @@ perfetto_processor_t::handle([[maybe_unused]] const amd_smi_sample& _amd_smi)
             }
             TRACE_COUNTER("device_pcie_bandwidth_inst",
                           amd_smi_pcie_bandwidth_inst_track::at(_device_id, 0), _ts,
-                          static_cast<double>(gpu_metrics.pcie_bandwidth_inst));
+                          static_cast<double>(gpu_metrics.pcie_info.bandwidth.inst));
         }
                           */
 }

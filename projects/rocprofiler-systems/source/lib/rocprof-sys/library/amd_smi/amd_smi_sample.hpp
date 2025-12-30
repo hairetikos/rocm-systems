@@ -41,11 +41,11 @@ serialize(uint8_t* buffer, const amd_smi_sample& item)
         item.metrics.current_socket_power, item.metrics.memory_usage,
         item.metrics.hotspot_temperature, item.metrics.edge_temperature,
         item.metrics.gfx_activity, item.metrics.umc_activity, item.metrics.mm_activity,
-        item.metrics.xcp_stats, item.metrics.xgmi_link_width,
-        item.metrics.xgmi_link_speed, item.metrics.xgmi_read_data_acc,
-        item.metrics.xgmi_write_data_acc, item.metrics.pcie_link_width,
-        item.metrics.pcie_link_speed, item.metrics.pcie_bandwidth_acc,
-        item.metrics.pcie_bandwidth_inst);
+        item.metrics.xcp_stats, item.metrics.xgmi_info.link.width,
+        item.metrics.xgmi_info.link.speed, item.metrics.xgmi_info.data_acc.read,
+        item.metrics.xgmi_info.data_acc.write, item.metrics.pcie_info.link.width,
+        item.metrics.pcie_info.link.speed, item.metrics.pcie_info.bandwidth.acc,
+        item.metrics.pcie_info.bandwidth.inst);
 }
 
 template <>
@@ -59,10 +59,10 @@ deserialize(uint8_t*& buffer)
         item.metrics.memory_usage, item.metrics.hotspot_temperature,
         item.metrics.edge_temperature, item.metrics.gfx_activity,
         item.metrics.umc_activity, item.metrics.mm_activity, item.metrics.xcp_stats,
-        item.metrics.xgmi_link_width, item.metrics.xgmi_link_speed,
-        item.metrics.xgmi_read_data_acc, item.metrics.xgmi_write_data_acc,
-        item.metrics.pcie_link_width, item.metrics.pcie_link_speed,
-        item.metrics.pcie_bandwidth_acc, item.metrics.pcie_bandwidth_inst);
+        item.metrics.xgmi_info.link.width, item.metrics.xgmi_info.link.speed,
+        item.metrics.xgmi_info.data_acc.read, item.metrics.xgmi_info.data_acc.write,
+        item.metrics.pcie_info.link.width, item.metrics.pcie_info.link.speed,
+        item.metrics.pcie_info.bandwidth.acc, item.metrics.pcie_info.bandwidth.inst);
     return item;
 }
 
@@ -76,10 +76,10 @@ get_size(const amd_smi_sample& item)
         item.metrics.memory_usage, item.metrics.hotspot_temperature,
         item.metrics.edge_temperature, item.metrics.gfx_activity,
         item.metrics.umc_activity, item.metrics.mm_activity, item.metrics.xcp_stats,
-        item.metrics.xgmi_link_width, item.metrics.xgmi_link_speed,
-        item.metrics.xgmi_read_data_acc, item.metrics.xgmi_write_data_acc,
-        item.metrics.pcie_link_width, item.metrics.pcie_link_speed,
-        item.metrics.pcie_bandwidth_acc, item.metrics.pcie_bandwidth_inst);
+        item.metrics.xgmi_info.link.width, item.metrics.xgmi_info.link.speed,
+        item.metrics.xgmi_info.data_acc.read, item.metrics.xgmi_info.data_acc.write,
+        item.metrics.pcie_info.link.width, item.metrics.pcie_info.link.speed,
+        item.metrics.pcie_info.bandwidth.acc, item.metrics.pcie_info.bandwidth.inst);
 }
 
 }  // namespace trace_cache

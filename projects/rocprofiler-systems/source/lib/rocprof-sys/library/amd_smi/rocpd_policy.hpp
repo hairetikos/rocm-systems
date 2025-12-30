@@ -117,7 +117,6 @@ struct rocpd_policy
             add_jpeg_track(xcp);
         }
 
-        // XGMI tracks
         trace_cache::get_metadata_registry().add_track(
             { trace_cache::info::annotate_with_device_id<
                   category::amd_smi_xgmi_link_width>(gpu_id),
@@ -140,7 +139,6 @@ struct rocpd_policy
                 { write_name.c_str(), thread_id, "{}" });
         }
 
-        // PCIE tracks
         trace_cache::get_metadata_registry().add_track(
             { trace_cache::info::annotate_with_device_id<
                   category::amd_smi_pcie_link_width>(gpu_id),
@@ -217,7 +215,6 @@ struct rocpd_policy
               COMPONENT, tim::units::mem_repr(tim::units::megabyte),
               rocprofsys::trace_cache::ABSOLUTE, BLOCK, EXPRESSION, 0, 0 });
 
-        // XGMI PMC metadata
         trace_cache::get_metadata_registry().add_pmc_info(
             { agent_type::GPU, gpu_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
               trait::name<category::amd_smi_xgmi_link_width>::value, "XGMI Width",
@@ -246,7 +243,6 @@ struct rocpd_policy
               LONG_DESCRIPTION, COMPONENT, "KB", rocprofsys::trace_cache::ABSOLUTE, BLOCK,
               EXPRESSION, 0, 0 });
 
-        // PCIE PMC metadata
         trace_cache::get_metadata_registry().add_pmc_info(
             { agent_type::GPU, gpu_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
               trait::name<category::amd_smi_pcie_link_width>::value, "PCIe Width",

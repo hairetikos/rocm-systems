@@ -417,35 +417,36 @@ struct perfetto_policy
                     const auto& xgmi_tracks = xgmi_it->second;
 
                     if(!xgmi_tracks.link_width.empty() &&
-                       itr.metrics.xgmi_link_width != 0)
+                       itr.metrics.xgmi_info.link.width != 0)
                     {
                         TRACE_COUNTER(
                             "device_xgmi_link_width",
                             counter_track::at(device_index, xgmi_tracks.link_width[0]),
-                            _ts, static_cast<double>(itr.metrics.xgmi_link_width));
+                            _ts, static_cast<double>(itr.metrics.xgmi_info.link.width));
                     }
 
                     if(!xgmi_tracks.link_speed.empty() &&
-                       itr.metrics.xgmi_link_speed != 0)
+                       itr.metrics.xgmi_info.link.speed != 0)
                     {
                         TRACE_COUNTER(
                             "device_xgmi_link_speed",
                             counter_track::at(device_index, xgmi_tracks.link_speed[0]),
-                            _ts, static_cast<double>(itr.metrics.xgmi_link_speed));
+                            _ts, static_cast<double>(itr.metrics.xgmi_info.link.speed));
                     }
 
                     for(size_t link = 0; link < AMDSMI_MAX_NUM_XGMI_LINKS &&
                                          link < xgmi_tracks.read_data.size();
                         ++link)
                     {
-                        if(itr.metrics.xgmi_read_data_acc[link] != 0)
+                        if(itr.metrics.xgmi_info.data_acc.read[link] != 0)
                         {
-                            TRACE_COUNTER("device_xgmi_read_data",
-                                          counter_track::at(device_index,
-                                                            xgmi_tracks.read_data[link]),
-                                          _ts,
-                                          static_cast<double>(
-                                              itr.metrics.xgmi_read_data_acc[link]));
+                            TRACE_COUNTER(
+                                "device_xgmi_read_data",
+                                counter_track::at(device_index,
+                                                  xgmi_tracks.read_data[link]),
+                                _ts,
+                                static_cast<double>(
+                                    itr.metrics.xgmi_info.data_acc.read[link]));
                         }
                     }
 
@@ -453,14 +454,15 @@ struct perfetto_policy
                                          link < xgmi_tracks.write_data.size();
                         ++link)
                     {
-                        if(itr.metrics.xgmi_write_data_acc[link] != 0)
+                        if(itr.metrics.xgmi_info.data_acc.write[link] != 0)
                         {
-                            TRACE_COUNTER("device_xgmi_write_data",
-                                          counter_track::at(device_index,
-                                                            xgmi_tracks.write_data[link]),
-                                          _ts,
-                                          static_cast<double>(
-                                              itr.metrics.xgmi_write_data_acc[link]));
+                            TRACE_COUNTER(
+                                "device_xgmi_write_data",
+                                counter_track::at(device_index,
+                                                  xgmi_tracks.write_data[link]),
+                                _ts,
+                                static_cast<double>(
+                                    itr.metrics.xgmi_info.data_acc.write[link]));
                         }
                     }
                 }
@@ -474,40 +476,42 @@ struct perfetto_policy
                     const auto& pcie_tracks = pcie_it->second;
 
                     if(!pcie_tracks.link_width.empty() &&
-                       itr.metrics.pcie_link_width != 0)
+                       itr.metrics.pcie_info.link.width != 0)
                     {
                         TRACE_COUNTER(
                             "device_pcie_link_width",
                             counter_track::at(device_index, pcie_tracks.link_width[0]),
-                            _ts, static_cast<double>(itr.metrics.pcie_link_width));
+                            _ts, static_cast<double>(itr.metrics.pcie_info.link.width));
                     }
 
                     if(!pcie_tracks.link_speed.empty() &&
-                       itr.metrics.pcie_link_speed != 0)
+                       itr.metrics.pcie_info.link.speed != 0)
                     {
                         TRACE_COUNTER(
                             "device_pcie_link_speed",
                             counter_track::at(device_index, pcie_tracks.link_speed[0]),
-                            _ts, static_cast<double>(itr.metrics.pcie_link_speed));
+                            _ts, static_cast<double>(itr.metrics.pcie_info.link.speed));
                     }
 
                     if(!pcie_tracks.bandwidth_acc.empty() &&
-                       itr.metrics.pcie_bandwidth_acc != 0)
+                       itr.metrics.pcie_info.bandwidth.acc != 0)
                     {
                         TRACE_COUNTER(
                             "device_pcie_bandwidth_acc",
                             counter_track::at(device_index, pcie_tracks.bandwidth_acc[0]),
-                            _ts, static_cast<double>(itr.metrics.pcie_bandwidth_acc));
+                            _ts,
+                            static_cast<double>(itr.metrics.pcie_info.bandwidth.acc));
                     }
 
                     if(!pcie_tracks.bandwidth_inst.empty() &&
-                       itr.metrics.pcie_bandwidth_inst != 0)
+                       itr.metrics.pcie_info.bandwidth.inst != 0)
                     {
                         TRACE_COUNTER(
                             "device_pcie_bandwidth_inst",
                             counter_track::at(device_index,
                                               pcie_tracks.bandwidth_inst[0]),
-                            _ts, static_cast<double>(itr.metrics.pcie_bandwidth_inst));
+                            _ts,
+                            static_cast<double>(itr.metrics.pcie_info.bandwidth.inst));
                     }
                 }
             }

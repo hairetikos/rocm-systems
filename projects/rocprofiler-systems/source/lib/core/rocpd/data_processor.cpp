@@ -173,7 +173,10 @@ data_processor::insert_pmc_description(
                            "Insert PMC description failed! Error: PMC descriptor "
                            "(name:%s) (ID:%lu) already exist!\n",
                            name, agent_id);
-        return;
+        throw std::runtime_error("Insert PMC description failed! Error: PMC descriptor "
+                                 "(name:" +
+                                 std::string(name) + ") (ID:" + std::to_string(agent_id) +
+                                 ") already exist!");
     }
     data_storage::queries::table_insert_query query_builder;
 
@@ -210,7 +213,9 @@ data_processor::insert_pmc_event(size_t event_id, size_t agent_id, const char* p
                            "Insert PMC event failed! Error: non-existing PMC description "
                            "agent id: %ld, pmc name: %s !\n",
                            agent_id, pmc_name);
-        return;
+        throw std::runtime_error(
+            "Insert PMC event failed! Error: non-existing PMC description agent id: " +
+            std::to_string(agent_id) + ", pmc name: " + pmc_name);
     }
 
     const auto pmc_description_id = it->second;

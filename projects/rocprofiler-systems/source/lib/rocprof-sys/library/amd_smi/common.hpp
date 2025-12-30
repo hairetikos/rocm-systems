@@ -118,23 +118,53 @@ struct smi_metrics
         std::array<uint16_t, AMDSMI_MAX_NUM_XCP>              vcn_busy;
     };
 
-    uint32_t                                        current_socket_power = 0;
-    uint32_t                                        average_socket_power = 0;
-    uint64_t                                        memory_usage         = 0;
-    int64_t                                         hotspot_temperature  = 0;
-    int64_t                                         edge_temperature     = 0;
-    uint32_t                                        gfx_activity         = 0;
-    uint32_t                                        umc_activity         = 0;
-    uint32_t                                        mm_activity          = 0;
-    std::array<xcp_metrics, AMDSMI_MAX_NUM_XCP>     xcp_stats;
-    uint16_t                                        xgmi_link_width = 0;
-    uint16_t                                        xgmi_link_speed = 0;
-    std::array<uint64_t, AMDSMI_MAX_NUM_XGMI_LINKS> xgmi_read_data_acc;
-    std::array<uint64_t, AMDSMI_MAX_NUM_XGMI_LINKS> xgmi_write_data_acc;
-    uint16_t                                        pcie_link_width     = 0;
-    uint16_t                                        pcie_link_speed     = 0;
-    uint64_t                                        pcie_bandwidth_acc  = 0;
-    uint64_t                                        pcie_bandwidth_inst = 0;
+    struct xgmi
+    {
+        struct link_info
+        {
+            uint16_t width = 0;
+            uint16_t speed = 0;
+        };
+
+        struct data_accumulator
+        {
+            std::array<uint64_t, AMDSMI_MAX_NUM_XGMI_LINKS> read;
+            std::array<uint64_t, AMDSMI_MAX_NUM_XGMI_LINKS> write;
+        };
+
+        link_info        link;
+        data_accumulator data_acc;
+    };
+
+    struct pcie
+    {
+        struct link_info
+        {
+            uint16_t width = 0;
+            uint16_t speed = 0;
+        };
+
+        struct bandwidth_info
+        {
+            uint64_t acc  = 0;
+            uint64_t inst = 0;
+        };
+
+        link_info      link;
+        bandwidth_info bandwidth;
+    };
+
+    uint32_t                                    current_socket_power = 0;
+    uint32_t                                    average_socket_power = 0;
+    uint64_t                                    memory_usage         = 0;
+    int64_t                                     hotspot_temperature  = 0;
+    int64_t                                     edge_temperature     = 0;
+    uint32_t                                    gfx_activity         = 0;
+    uint32_t                                    umc_activity         = 0;
+    uint32_t                                    mm_activity          = 0;
+    std::array<xcp_metrics, AMDSMI_MAX_NUM_XCP> xcp_stats;
+    xgmi                                        xgmi_info;
+    pcie                                        pcie_info;
 };
 
 #endif  // ROCPROFSYS_USE_ROCM > 0
