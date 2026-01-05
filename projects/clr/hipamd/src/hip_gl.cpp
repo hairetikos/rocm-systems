@@ -68,7 +68,7 @@ static inline hipError_t hipSetInteropObjects(int num_objects, void** mem_object
                                               std::vector<amd::Memory*>& interopObjects) {
   if ((num_objects == 0 && mem_objects != nullptr) ||
       (num_objects != 0 && mem_objects == nullptr)) {
-    return hipErrorUnknown;
+    return hipErrorInvalidValue;
   }
 
   while (num_objects-- > 0) {
