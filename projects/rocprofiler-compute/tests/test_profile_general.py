@@ -687,16 +687,22 @@ def test_path_rocflop(
     val = pd.read_csv(f"{analysis_dir}/2.1_System_Speed-of-Light.csv")["Avg"].values[0]
     if soc == "MI300":
         assert compare_value(val, 0.77)
+    elif soc == "MI350":
+        assert compare_value(val, 1.00)
     # HBM Bandwidth
     val = pd.read_csv(f"{analysis_dir}/4.1_Roofline_Performance_Rates.csv")[
         "Value"
     ].values[0]
     if soc == "MI300":
         assert compare_value(val, 1.02)
+    elif soc == "MI350":
+        assert compare_value(val, 0.76)
     # AI HBM
     val = pd.read_csv(f"{analysis_dir}/4.2_Roofline_Plot_Points.csv")["Value"].values[0]
     if soc == "MI300":
         assert compare_value(val, 374420.64)
+    elif soc == "MI350":
+        assert compare_value(val, 379934.42)
 
     test_utils.clean_output_dir(config["cleanup"], workload_dir)
     test_utils.clean_output_dir(config["cleanup"], analysis_dir)
