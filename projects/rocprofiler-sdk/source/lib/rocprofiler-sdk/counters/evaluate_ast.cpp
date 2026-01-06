@@ -735,10 +735,8 @@ EvaluateAST::read_special_counters(
         if(!out_map[metric.id()].empty()) out_map[metric.id()].clear();
         auto& record = out_map[metric.id()].emplace_back();
         set_counter_in_rec(record.id, {.handle = metric.id()});
-        // Don't use DIMENSION_NONE as it overwrites the DIMENSION_AGENT field
-        // Instead, explicitly set DIMENSION_AGENT with the agent's logical_node_id
-        set_dim_in_rec(
-            record.id, ROCPROFILER_DIMENSION_AGENT, agent.logical_node_id + AGENT_ENCODING_OFFSET);
+        // Agent encoding removed - DIMENSION_AGENT set by set_counter_in_rec to 0
+        // Agent info available from record.agent_id field
 
         record.counter_value = get_agent_property(metric.name(), agent);
     }
@@ -778,12 +776,8 @@ EvaluateAST::read_pkt(const aql::CounterPacketConstruct* pkt_gen, hsa::AQLPacket
             CHECK_EQ(aql_status, ROCPROFILER_STATUS_SUCCESS)
                 << rocprofiler_get_status_string(aql_status);
 
-            // Set DIMENSION_AGENT with the agent's logical_node_id
-            auto        agent_id = it.pkt_gen->agent();
-            const auto* agent    = CHECK_NOTNULL(rocprofiler::agent::get_agent(agent_id));
-            set_dim_in_rec(next_rec.id,
-                           ROCPROFILER_DIMENSION_AGENT,
-                           agent->logical_node_id + AGENT_ENCODING_OFFSET);
+            // Agent encoding removed - DIMENSION_AGENT set by set_counter_in_rec to 0
+            // Agent info available from record.agent_id field
 
             // set_dim_in_rec(next_rec.id, ROCPROFILER_DIMENSION_NONE, vec.size() - 1);
             // Note: in the near future we need to use hw_counter here instead

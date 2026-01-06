@@ -373,14 +373,9 @@ getMetricsForAgent(const rocprofiler_agent_t* agent)
         {
             Metric agent_metric = base_metric;
 
-            // Encode agent into counter ID using agent's logical_node_id + AGENT_ENCODING_OFFSET.
-            // We add offset so that agent 0 has non-zero encoding and is detectable as
-            // agent-encoded. Only logical_node_id values 0-62 (i.e., 63 agents) are supported,
-            // since adding AGENT_ENCODING_OFFSET (1) results in encoded values 1-63, which fit in a
-            // 6-bit field.
+            // Agent encoding removed - only store base metric ID
             rocprofiler_counter_id_t new_id{.handle = 0};
             set_base_metric_in_counter_id(new_id, base_metric.id());
-            set_agent_in_counter_id(new_id, static_cast<uint8_t>(agent->logical_node_id));
 
             agent_metric.set_id(new_id.handle);
             agent_specific_metrics.push_back(agent_metric);
@@ -398,13 +393,8 @@ checkValidMetric(const std::string& agent, const Metric& metric)
     auto        metrics   = loadMetrics();
     const auto* agent_map = common::get_val(metrics->arch_to_id, agent);
 
-    // Extract base metric ID if counter ID is agent-encoded
-    rocprofiler_counter_id_t counter_id{.handle = metric.id()};
-    uint64_t                 base_metric_id = is_agent_encoded_counter_id(counter_id)
-                                                  ? get_base_metric_from_counter_id(counter_id)
-                                                  : metric.id();
-
-    return agent_map != nullptr && agent_map->count(base_metric_id) > 0;
+    // Agent encoding has been removed - metric.id() is always the base metric ID
+    return agent_map != nullptr && agent_map->count(metric.id()) > 0;
 }
 
 bool
