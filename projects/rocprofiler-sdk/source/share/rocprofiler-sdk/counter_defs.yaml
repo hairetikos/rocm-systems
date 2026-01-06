@@ -617,11 +617,13 @@ rocprofiler-sdk:
     - architectures:
       - gfx90a
       expression: 1024*(WRITE_SIZE+FETCH_SIZE)/reduce(GRBM_GUI_ACTIVE,max)
+    # Approximation which excludes TCC_EA0_RDREQ_32B due to the hardware limitation on the number of counters that can be collected.
     - architectures:
       - gfx940
       - gfx941
       - gfx942
       expression: (WRITE_SIZE*1024+TCC_BUBBLE_sum*128+(TCC_EA0_RDREQ_sum-TCC_BUBBLE_sum)*64)/reduce(GRBM_GUI_ACTIVE,max)
+    # Approximation which excludes TCC_EA0_RDREQ_32B due to the hardware limitation on the number of counters that can be collected.
     - architectures:
       - gfx950
       expression: (WRITE_SIZE*1024+TCC_EA0_RDREQ_128B_sum*128+TCC_EA0_RDREQ_64B_sum*64)/reduce(GRBM_GUI_ACTIVE,max)
