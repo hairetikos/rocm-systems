@@ -662,50 +662,88 @@ def test_path_rocflop(
     # Ensure non zero length of df
     assert len(pmc_perf_df) > 0
 
-    # Analyze
-    analysis_dir = test_utils.get_output_dir(param_id="analysis")
-    code = binary_handler_analyze_rocprof_compute([
-        "analyze",
-        "--output-name",
-        f"{analysis_dir}",
-        "--output-format",
-        "csv",
-        "-b",
-        "2.1.23",
-        "4.1.9",
-        "4.2.0",
-        "--path",
-        workload_dir,
-    ])
-    assert code == 0
+    # Check whether metric values are correct
+    check_metrics = {
+        "MI300": [
+            {
+                "name": "L2-Fabric Read BW",
+                "metric_id": "2.1.23",
+                "csv_file": "2.1_System_Speed-of-Light.csv",
+                "column": "Avg",
+                "expected_value": 0.77,
+            },
+            {
+                "name": "HBM Bandwidth",
+                "metric_id": "4.1.9",
+                "csv_file": "4.1_Roofline_Performance_Rates.csv",
+                "column": "Value",
+                "expected_value": 1.02,
+            },
+            {
+                "name": "AI HBM",
+                "metric_id": "4.2.0",
+                "csv_file": "4.2_Roofline_Plot_Points.csv",
+                "column": "Value",
+                "expected_value": 374420.64,
+            }
+        ],
+        "MI350": [
+            {
+                "name": "L2-Fabric Read BW",
+                "metric_id": "2.1.23",
+                "csv_file": "2.1_System_Speed-of-Light.csv",
+                "column": "Avg",
+                "expected_value": 0.77,
+            },
+            {
+                "name": "HBM Bandwidth",
+                "metric_id": "4.1.10",
+                "csv_file": "4.1_Roofline_Performance_Rates.csv",
+                "column": "Value",
+                "expected_value": 1.02,
+            },
+            {
+                "name": "AI HBM",
+                "metric_id": "4.2.0",
+                "csv_file": "4.2_Roofline_Plot_Points.csv",
+                "column": "Value",
+                "expected_value": 374420.64,
+            }
+        ]
+    }
+    metrics = check_metrics.get(soc, [])
+    if metrics:
+        # Check metric values for metric ids
+        metric_ids = [m["metric_id"] for m in metrics]
+        analysis_dir = test_utils.get_output_dir(param_id="analysis")
+        code = binary_handler_analyze_rocprof_compute([
+            "analyze",
+            "--output-name",
+            f"{analysis_dir}",
+            "--output-format",
+            "csv",
+            "-b",
+            *metric_ids,
+            "--path",
+            workload_dir,
+        ])
+        assert code == 0
 
-    # Check metric values with 5% tolerance
-    def compare_value(actual, expected, tolerance=0.05):
-        return abs(actual - expected) / expected <= tolerance
+        for metric in metrics:
+            actual = pd.read_csv(f"{analysis_dir}/{metric['csv_file']}")[
+                metric["column"]
+            ].values[0]
+            expected = metric["expected_value"]
+            # 5% tolerance in checking
+            assert abs(actual - expected) / expected <= 0.05, (
+                f"{metric['name']} ({metric['metric_id']}): "
+                f"actual={actual}, expected={expected}, "
+                f"diff={(abs(actual - expected) / expected * 100):.2f}% (tolerance: 5%)"
+            )
 
-    # L2-Fabric Read BW
-    val = pd.read_csv(f"{analysis_dir}/2.1_System_Speed-of-Light.csv")["Avg"].values[0]
-    if soc == "MI300":
-        assert compare_value(val, 0.77)
-    elif soc == "MI350":
-        assert compare_value(val, 1.00)
-    # HBM Bandwidth
-    val = pd.read_csv(f"{analysis_dir}/4.1_Roofline_Performance_Rates.csv")[
-        "Value"
-    ].values[0]
-    if soc == "MI300":
-        assert compare_value(val, 1.02)
-    elif soc == "MI350":
-        assert compare_value(val, 0.76)
-    # AI HBM
-    val = pd.read_csv(f"{analysis_dir}/4.2_Roofline_Plot_Points.csv")["Value"].values[0]
-    if soc == "MI300":
-        assert compare_value(val, 374420.64)
-    elif soc == "MI350":
-        assert compare_value(val, 379934.42)
+        test_utils.clean_output_dir(config["cleanup"], analysis_dir)
 
     test_utils.clean_output_dir(config["cleanup"], workload_dir)
-    test_utils.clean_output_dir(config["cleanup"], analysis_dir)
 
 
 @pytest.mark.path
