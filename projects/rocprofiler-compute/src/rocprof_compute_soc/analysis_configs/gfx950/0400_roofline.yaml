@@ -69,7 +69,7 @@ Panel Config:
           peak: $MFMAI8Ops_empirical_peak
         HBM Bandwidth:
           value: AVG(((TCC_EA0_RDREQ_128B_sum * 128 + TCC_EA0_RDREQ_32B_sum * 32
-            + TCC_EA0_RDREQ_64B_sum * 64) + ((TCC_EA0_WRREQ_sum
+            + TCC_EA0_RDREQ_64B_sum * 64 + ((TCC_EA0_WRREQ_sum
             - TCC_EA0_WRREQ_64B_sum) * 32) + (TCC_EA0_WRREQ_64B_sum * 64)) / ((End_Timestamp
             - Start_Timestamp) / 1e9)) / 1e9)
           unit: GB/s
