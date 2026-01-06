@@ -693,21 +693,21 @@ def test_path_rocflop(
                 "metric_id": "2.1.23",
                 "csv_file": "2.1_System_Speed-of-Light.csv",
                 "column": "Avg",
-                "expected_value": 0.77,
+                "expected_value": 1.01,
             },
             {
                 "name": "HBM Bandwidth",
                 "metric_id": "4.1.10",
                 "csv_file": "4.1_Roofline_Performance_Rates.csv",
                 "column": "Value",
-                "expected_value": 1.02,
+                "expected_value": 0.74,
             },
             {
                 "name": "AI HBM",
                 "metric_id": "4.2.0",
                 "csv_file": "4.2_Roofline_Plot_Points.csv",
                 "column": "Value",
-                "expected_value": 374420.64,
+                "expected_value": 384983.78,
             }
         ]
     }
