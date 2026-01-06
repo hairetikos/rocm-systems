@@ -587,7 +587,6 @@ rocprofiler-sdk:
       - gfx940
       - gfx941
       - gfx942
-      - gfx950
       expression: (TCC_BUBBLE_sum*128 + (TCC_EA0_RDREQ_sum-TCC_BUBBLE_sum-TCC_EA0_RDREQ_32B_sum)*64 + TCC_EA0_RDREQ_32B_sum*32)/1024
     - architectures:
       - gfx950
@@ -614,14 +613,11 @@ rocprofiler-sdk:
     definitions:
     - architectures:
       - gfx90a
-      - gfx950
-      expression: 1024*(WRITE_SIZE+FETCH_SIZE)/reduce(GRBM_GUI_ACTIVE,max)
-    - architectures:
       - gfx940
       - gfx941
       - gfx942
       - gfx950
-      expression: (WRITE_SIZE*1024+TCC_BUBBLE_sum*128+(TCC_BUBBLE_sum-TCC_EA0_RDREQ_sum)*64)/reduce(GRBM_GUI_ACTIVE,max)
+      expression: 1024*(WRITE_SIZE+FETCH_SIZE)/reduce(GRBM_GUI_ACTIVE,max)
   - name: FetchSize
     description: The total kilobytes fetched from the video memory. This is measured with all extra fetches and any cache
       or memory effects taken into account.
