@@ -643,17 +643,17 @@ def test_path(binary_handler_profile_rocprof_compute):
 
 @pytest.mark.path
 def test_path_rocflop(
-    binary_handler_profile_rocprof_compute,
+    binary_handler_profile_rocprof_compute, binary_handler_analyze_rocprof_compute
 ):
     # Test whether multiprocess workloads like rocflop are handled correctly
     workload_dir = test_utils.get_output_dir()
-    options = ["--block", "2.1.1"]
+    options = ["--block", "2", "4"]
     _ = binary_handler_profile_rocprof_compute(
         config,
         workload_dir,
         options,
         check_success=True,
-        roof=False,
+        roof=True,
         app_name="rocflop",
     )
     pmc_perf_df = test_utils.check_csv_files(workload_dir, num_devices, num_kernels)[
@@ -661,7 +661,45 @@ def test_path_rocflop(
     ]
     # Ensure non zero length of df
     assert len(pmc_perf_df) > 0
+
+    # Analyze
+    analysis_dir = test_utils.get_output_dir(param_id="analysis")
+    code = binary_handler_analyze_rocprof_compute([
+        "analyze",
+        "--output-name",
+        f"{analysis_dir}",
+        "--output-format",
+        "csv",
+        "-b",
+        "2.1.23",
+        "4.1.9",
+        "4.2.0",
+        "--path",
+        workload_dir,
+    ])
+    assert code == 0
+
+    # Check metric values with 5% tolerance
+    def compare_value(actual, expected, tolerance=0.05):
+        return abs(actual - expected) / expected <= tolerance
+
+    # L2-Fabric Read BW
+    val = pd.read_csv(f"{analysis_dir}/2.1_System_Speed-of-Light.csv")["Avg"].values[0]
+    if soc == "MI300":
+        assert compare_value(val, 0.77)
+    # HBM Bandwidth
+    val = pd.read_csv(f"{analysis_dir}/4.1_Roofline_Performance_Rates.csv")[
+        "Value"
+    ].values[0]
+    if soc == "MI300":
+        assert compare_value(val, 1.02)
+    # AI HBM
+    val = pd.read_csv(f"{analysis_dir}/4.2_Roofline_Plot_Points.csv")["Value"].values[0]
+    if soc == "MI300":
+        assert compare_value(val, 374420.64)
+
     test_utils.clean_output_dir(config["cleanup"], workload_dir)
+    test_utils.clean_output_dir(config["cleanup"], analysis_dir)
 
 
 @pytest.mark.path
