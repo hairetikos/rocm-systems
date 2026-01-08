@@ -107,6 +107,31 @@ target_include_directories(${AMD_SMI} PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_
 set_property(TARGET ${AMD_SMI} PROPERTY SOVERSION "${MAJOR}")
 set_property(TARGET ${AMD_SMI} PROPERTY VERSION "${SO_VERSION_STRING}")
 
+if(BUILD_PYTHON_LIB)
+    add_library(${AMD_SMI}_python ${SRC_LIST} ${INC_LIST})
+    set_target_properties(${AMD_SMI}_python PROPERTIES OUTPUT_NAME "${AMD_SMI}_python")
+    target_link_libraries(${AMD_SMI}_python PRIVATE
+        rt
+        Threads::Threads
+        ${CMAKE_DL_LIBS}
+        ${FILESYSTEM_LIB}
+    )
+    target_include_directories(${AMD_SMI}_python PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}/rocm_smi/include
+        ${PROJECT_SOURCE_DIR}/common/shared_mutex
+        ${RAS_DECODE_INC_DIR}
+        ${DRM_INCLUDE_DIRS}
+        ${DRM_AMDGPU_INCLUDE_DIRS}
+    )
+    target_include_directories(${AMD_SMI}_python PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+    )
+    set_property(TARGET ${AMD_SMI}_python PROPERTY SOVERSION "${MAJOR}")
+    set_property(TARGET ${AMD_SMI}_python PROPERTY VERSION "${SO_VERSION_STRING}")
+endif()
+
 ## If the library is a release, strip the target library
 if("${CMAKE_BUILD_TYPE}" STREQUAL Release)
     if(${BUILD_SHARED_LIBS}) #stripping only for .so

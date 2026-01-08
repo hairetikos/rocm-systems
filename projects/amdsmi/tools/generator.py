@@ -159,6 +159,17 @@ def main():
         clang_extra_args = " " + clang_extra_args
 
     library_name = os.path.basename(library)
+    output_dir = os.path.dirname(os.path.abspath(output_file))
+    find_lib_hint = os.getenv("AMDSMI_FIND_LIB_PATH")
+    find_lib_exists = False
+    if find_lib_hint and os.path.exists(find_lib_hint):
+        find_lib_exists = True
+    elif os.path.exists(os.path.join(output_dir, "_find_lib.py")):
+        find_lib_hint = os.path.join(output_dir, "_find_lib.py")
+        find_lib_exists = True
+
+    if find_lib_exists:
+        library_name = "libamd_smi_python.so"
 
     clang_include_dir = \
         run(["clang", "--print-resource-dir"], stdout=PIPE, stderr=PIPE, encoding="utf-8").stdout.strip()
@@ -223,14 +234,20 @@ def find_smi_library():
     raise err
 
 try:
-    _libraries['{library_name}'], location = find_smi_library()
-    #print(f"found smi lib in [", location, "]")
-except OSError as e:
-    print(e)
-    print("Unable to find {library_name} library try installing amd-smi-lib from your package manager")
+    from ._find_lib import find_smi_library as _custom_find_smi_library
+    _custom_path = _custom_find_smi_library()
+    _libraries['{library_name}'] = ctypes.CDLL(str(_custom_path))
+    location = _custom_path
+except Exception:
+    try:
+        _libraries['{library_name}'], location = find_smi_library()
+        #print(f"found smi lib in [", location, "]")
+    except OSError as e:
+        print(e)
+        print("Unable to find {library_name} library try installing amd-smi-lib from your package manager")
 
 #Add support for amdsmi_free_name_value_pairs
-amdsmi_free_name_value_pairs = _libraries['libamd_smi.so'].amdsmi_free_name_value_pairs
+amdsmi_free_name_value_pairs = _libraries['{library_name}'].amdsmi_free_name_value_pairs
 amdsmi_free_name_value_pairs.restype = None
 amdsmi_free_name_value_pairs.argtypes = [ctypes.POINTER(None)]"""
     else:
