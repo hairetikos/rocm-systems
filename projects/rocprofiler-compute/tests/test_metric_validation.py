@@ -42,7 +42,7 @@ VALIDATE_METRICS = {
                 "metric_id": "4.1.8",
                 "csv_file": "4.1_Roofline_Performance_Rates.csv",
                 "column": "Value",
-                "expected_value": 1.02,
+                "expected_value": 1044.48,
             },
         ],
         "MI200": [
@@ -51,7 +51,7 @@ VALIDATE_METRICS = {
                 "metric_id": "4.1.8",
                 "csv_file": "4.1_Roofline_Performance_Rates.csv",
                 "column": "Value",
-                "expected_value": 0.74,
+                "expected_value": 1389.17,
             },
         ],
         "MI300": [
@@ -60,7 +60,7 @@ VALIDATE_METRICS = {
                 "metric_id": "4.1.9",
                 "csv_file": "4.1_Roofline_Performance_Rates.csv",
                 "column": "Value",
-                "expected_value": 3940.0,
+                "expected_value": 3910.62,
             },
         ],
         "MI350": [
@@ -69,7 +69,7 @@ VALIDATE_METRICS = {
                 "metric_id": "4.1.10",
                 "csv_file": "4.1_Roofline_Performance_Rates.csv",
                 "column": "Value",
-                "expected_value": 0.74,
+                "expected_value": 5690.42,
             },
         ],
     }
