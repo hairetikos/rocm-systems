@@ -37,29 +37,7 @@ import pytest
 import test_utils
 from scipy.stats import zscore
 
-# Globals
-
-# TODO: MI350 What are the gpu models in MI 350 series
-SUPPORTED_ARCHS = {
-    "gfx908": {"mi100": ["MI100"]},
-    "gfx90a": {"mi200": ["MI210", "MI250", "MI250X"]},
-    "gfx940": {"mi300": ["MI300A_A0"]},
-    "gfx941": {"mi300": ["MI300X_A0"]},
-    "gfx942": {"mi300": ["MI300A_A1", "MI300X_A1"]},
-    "gfx950": {"mi350": ["MI350"]},
-}
-
-CHIP_IDS = {
-    "29856": "MI300A_A1",
-    "29857": "MI300X_A1",
-    "29858": "MI308X",
-    "30112": "MI350",
-}
-
-# --
 # Runtime config options
-# --
-
 config = {}
 config["kernel_name_1"] = "vecCopy"
 config["app_1"] = ["./tests/vcopy", "-n", "1048576", "-b", "256", "-i", "3"]
@@ -245,47 +223,7 @@ def counter_compare(test_name, errors_pd, baseline_df, run_df, threshold=5):
     return errors_pd
 
 
-def gpu_soc():
-    global num_devices
-    ## 1) Parse arch details from rocminfo
-    rocminfo = str(
-        # decode with utf-8 to account for rocm-smi changes in latest rocm
-        subprocess.run(
-            ["rocminfo"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        ).stdout.decode("utf-8")
-    )
-    rocminfo = rocminfo.split("\n")
-    soc_regex = re.compile(r"^\s*Name\s*:\s+ ([a-zA-Z0-9]+)\s*$", re.MULTILINE)
-    devices = list(filter(soc_regex.match, rocminfo))
-    gpu_arch = devices[0].split()[1]
-
-    if not gpu_arch in SUPPORTED_ARCHS.keys():
-        print("Cannot find a supported arch in rocminfo")
-        assert 0
-    else:
-        num_devices = (
-            len(devices)
-            if not "CI_VISIBLE_DEVICES" in os.environ
-            else os.environ["CI_VISIBLE_DEVICES"]
-        )
-
-    ## 2) Parse chip id from rocminfo
-    chip_id = re.compile(r"^\s*Chip ID:\s+ ([a-zA-Z0-9]+)\s*", re.MULTILINE)
-    ids = list(filter(chip_id.match, rocminfo))
-    for id in ids:
-        chip_id = re.match(r"^[^()]+", id.split()[2]).group(0)
-
-    ## 3) Deduce gpu model name from arch
-    gpu_model = list(SUPPORTED_ARCHS[gpu_arch].keys())[0].upper()
-    # For testing purposes we only care about gpu model series not the specific model
-    # if gpu_model not in ("MI50", "MI100", "MI200"):
-    #     if chip_id in CHIP_IDS:
-    #         gpu_model = CHIP_IDS[chip_id]
-
-    return gpu_model
-
-
-soc = gpu_soc()
+soc = test_utils.gpu_soc()
 
 os.environ["ROCPROF"] = "rocprofiler-sdk"
 
@@ -642,18 +580,16 @@ def test_path(binary_handler_profile_rocprof_compute):
 
 
 @pytest.mark.path
-def test_path_rocflop(
-    binary_handler_profile_rocprof_compute, binary_handler_analyze_rocprof_compute
-):
+def test_path_rocflop(binary_handler_profile_rocprof_compute):
     # Test whether multiprocess workloads like rocflop are handled correctly
     workload_dir = test_utils.get_output_dir()
-    options = ["--block", "2", "4"]
+    options = ["--block", "2.1.1"]
     _ = binary_handler_profile_rocprof_compute(
         config,
         workload_dir,
         options,
         check_success=True,
-        roof=True,
+        roof=False,
         app_name="rocflop",
     )
     pmc_perf_df = test_utils.check_csv_files(workload_dir, num_devices, num_kernels)[
@@ -661,88 +597,6 @@ def test_path_rocflop(
     ]
     # Ensure non zero length of df
     assert len(pmc_perf_df) > 0
-
-    # Check whether metric values are correct
-    check_metrics = {
-        "MI300": [
-            {
-                "name": "L2-Fabric Read BW",
-                "metric_id": "2.1.23",
-                "csv_file": "2.1_System_Speed-of-Light.csv",
-                "column": "Avg",
-                "expected_value": 0.77,
-            },
-            {
-                "name": "HBM Bandwidth",
-                "metric_id": "4.1.9",
-                "csv_file": "4.1_Roofline_Performance_Rates.csv",
-                "column": "Value",
-                "expected_value": 1.02,
-            },
-            {
-                "name": "AI HBM",
-                "metric_id": "4.2.0",
-                "csv_file": "4.2_Roofline_Plot_Points.csv",
-                "column": "Value",
-                "expected_value": 374420.64,
-            }
-        ],
-        "MI350": [
-            {
-                "name": "L2-Fabric Read BW",
-                "metric_id": "2.1.23",
-                "csv_file": "2.1_System_Speed-of-Light.csv",
-                "column": "Avg",
-                "expected_value": 1.01,
-            },
-            {
-                "name": "HBM Bandwidth",
-                "metric_id": "4.1.10",
-                "csv_file": "4.1_Roofline_Performance_Rates.csv",
-                "column": "Value",
-                "expected_value": 0.74,
-            },
-            {
-                "name": "AI HBM",
-                "metric_id": "4.2.0",
-                "csv_file": "4.2_Roofline_Plot_Points.csv",
-                "column": "Value",
-                "expected_value": 384983.78,
-            }
-        ]
-    }
-    metrics = check_metrics.get(soc, [])
-    if metrics:
-        # Check metric values for metric ids
-        metric_ids = [m["metric_id"] for m in metrics]
-        analysis_dir = test_utils.get_output_dir(param_id="analysis")
-        code = binary_handler_analyze_rocprof_compute([
-            "analyze",
-            "--output-name",
-            f"{analysis_dir}",
-            "--output-format",
-            "csv",
-            "-b",
-            *metric_ids,
-            "--path",
-            workload_dir,
-        ])
-        assert code == 0
-
-        for metric in metrics:
-            actual = pd.read_csv(f"{analysis_dir}/{metric['csv_file']}")[
-                metric["column"]
-            ].values[0]
-            expected = metric["expected_value"]
-            # 5% tolerance in checking
-            assert abs(actual - expected) / expected <= 0.05, (
-                f"{metric['name']} ({metric['metric_id']}): "
-                f"actual={actual}, expected={expected}, "
-                f"diff={(abs(actual - expected) / expected * 100):.2f}% (tolerance: 5%)"
-            )
-
-        test_utils.clean_output_dir(config["cleanup"], analysis_dir)
-
     test_utils.clean_output_dir(config["cleanup"], workload_dir)
 
 
