@@ -101,13 +101,12 @@ struct amd_smi_impl
 
     void config()
     {
-        auto _enabled_metrics = SettingsApi::get_enabled_metrics();
         CacheApi::initialize_category_metadata();
 
         for(const auto& device : m_gpu_processors)
         {
             auto device_index = device->get_index();
-            PerfettoApi::setup_counter_tracks(device_index, _enabled_metrics);
+            PerfettoApi::setup_counter_tracks(device_index, m_enabled_metrics);
             CacheApi::initialize_smi_tracks_metadata(device_index);
             CacheApi::initialize_smi_pmc_metadata(device_index);
         }
@@ -115,8 +114,6 @@ struct amd_smi_impl
 
     void sample(const get_timestamp_t& get_timestamp)
     {
-        auto _enabled_metrics = SettingsApi::get_enabled_metrics();
-
         for(auto it = m_gpu_processors.begin(); it != m_gpu_processors.end();)
         {
             auto& processor  = *it;
@@ -130,7 +127,7 @@ struct amd_smi_impl
                 auto _smi_metrics       = processor->get_smi_metrics();
                 auto _device_id         = processor->get_index();
 
-                CacheApi::store_sample(_device_id, _supported_metrics, _enabled_metrics,
+                CacheApi::store_sample(_device_id, _supported_metrics, m_enabled_metrics,
                                        _smi_metrics, _timestamp);
                 PerfettoApi::store_sample(_device_id, _smi_metrics, _timestamp);
                 ++it;

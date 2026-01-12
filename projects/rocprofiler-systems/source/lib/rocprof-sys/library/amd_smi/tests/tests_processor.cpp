@@ -7,8 +7,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <sstream>
-
 #if ROCPROFSYS_USE_ROCM > 0
 
 using ::testing::_;
@@ -67,14 +65,14 @@ TEST_F(processor_test, get_smi_metrics_returns_valid_activity_metrics)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    amdsmi_engine_usage_t expected_activity{};
-    expected_activity.gfx_activity = 50;
-    expected_activity.umc_activity = 30;
-    expected_activity.mm_activity  = 20;
+    amdsmi_gpu_metrics_t gpu_metrics{};
+    gpu_metrics.average_gfx_activity = 50;
+    gpu_metrics.average_umc_activity = 30;
+    gpu_metrics.average_mm_activity  = 20;
 
-    EXPECT_CALL(*m_mock_driver, get_activity(handle, _))
+    EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
         .WillRepeatedly(
-            DoAll(SetArgPointee<1>(expected_activity), Return(AMDSMI_STATUS_SUCCESS)));
+            DoAll(SetArgPointee<1>(gpu_metrics), Return(AMDSMI_STATUS_SUCCESS)));
 
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
@@ -89,42 +87,40 @@ TEST_F(processor_test, get_smi_metrics_returns_power_metrics)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    amdsmi_power_info_t expected_power{};
-    expected_power.current_socket_power = 150000;
-    expected_power.average_socket_power = 140000;
+    amdsmi_gpu_metrics_t gpu_metrics{};
+    gpu_metrics.current_socket_power = 1500;
+    gpu_metrics.average_socket_power = 1400;
 
-    EXPECT_CALL(*m_mock_driver, get_power_info(handle, _))
+    EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
         .WillRepeatedly(
-            DoAll(SetArgPointee<1>(expected_power), Return(AMDSMI_STATUS_SUCCESS)));
+            DoAll(SetArgPointee<1>(gpu_metrics), Return(AMDSMI_STATUS_SUCCESS)));
 
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
     auto metrics = proc.get_smi_metrics();
 
-    EXPECT_EQ(metrics.current_socket_power, 150000u);
-    EXPECT_EQ(metrics.average_socket_power, 140000u);
+    EXPECT_EQ(metrics.current_socket_power, 1500u);
+    EXPECT_EQ(metrics.average_socket_power, 1400u);
 }
 
 TEST_F(processor_test, get_smi_metrics_returns_temperature_metrics)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    EXPECT_CALL(*m_mock_driver,
-                get_temperature_metric(handle, AMDSMI_TEMPERATURE_TYPE_HOTSPOT,
-                                       AMDSMI_TEMP_CURRENT, _))
-        .WillRepeatedly(DoAll(SetArgPointee<3>(75000), Return(AMDSMI_STATUS_SUCCESS)));
+    amdsmi_gpu_metrics_t gpu_metrics{};
+    gpu_metrics.temperature_hotspot = 75;
+    gpu_metrics.temperature_edge    = 65;
 
-    EXPECT_CALL(*m_mock_driver,
-                get_temperature_metric(handle, AMDSMI_TEMPERATURE_TYPE_EDGE,
-                                       AMDSMI_TEMP_CURRENT, _))
-        .WillRepeatedly(DoAll(SetArgPointee<3>(65000), Return(AMDSMI_STATUS_SUCCESS)));
+    EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
+        .WillRepeatedly(
+            DoAll(SetArgPointee<1>(gpu_metrics), Return(AMDSMI_STATUS_SUCCESS)));
 
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
     auto metrics = proc.get_smi_metrics();
 
-    EXPECT_EQ(metrics.hotspot_temperature, 75000);
-    EXPECT_EQ(metrics.edge_temperature, 65000);
+    EXPECT_EQ(metrics.hotspot_temperature, 75);
+    EXPECT_EQ(metrics.edge_temperature, 65);
 }
 
 TEST_F(processor_test, get_smi_metrics_returns_memory_metrics)
@@ -227,12 +223,6 @@ TEST_F(processor_test, get_smi_metrics_handles_not_supported)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    EXPECT_CALL(*m_mock_driver, get_activity(handle, _))
-        .WillRepeatedly(Return(AMDSMI_STATUS_NOT_SUPPORTED));
-    EXPECT_CALL(*m_mock_driver, get_power_info(handle, _))
-        .WillRepeatedly(Return(AMDSMI_STATUS_NOT_SUPPORTED));
-    EXPECT_CALL(*m_mock_driver, get_temperature_metric(handle, _, _, _))
-        .WillRepeatedly(Return(AMDSMI_STATUS_NOT_SUPPORTED));
     EXPECT_CALL(*m_mock_driver, get_memory_usage(handle, _, _))
         .WillRepeatedly(Return(AMDSMI_STATUS_NOT_SUPPORTED));
     EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
@@ -249,21 +239,17 @@ TEST_F(processor_test, get_supported_metrics_returns_correct_flags)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    amdsmi_power_info_t power_info{};
-    power_info.current_socket_power = 150000;
-    power_info.average_socket_power = 140000;
+    amdsmi_gpu_metrics_t gpu_metrics{};
+    gpu_metrics.current_socket_power = 1500;
+    gpu_metrics.average_socket_power = 1400;
+    gpu_metrics.average_gfx_activity = 50;
+    gpu_metrics.temperature_hotspot  = 75;
+    gpu_metrics.temperature_edge     = 65;
 
-    amdsmi_engine_usage_t activity{};
-    activity.gfx_activity = 50;
-
-    EXPECT_CALL(*m_mock_driver, get_power_info(handle, _))
+    EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
         .WillRepeatedly(
-            DoAll(SetArgPointee<1>(power_info), Return(AMDSMI_STATUS_SUCCESS)));
-    EXPECT_CALL(*m_mock_driver, get_activity(handle, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(activity), Return(AMDSMI_STATUS_SUCCESS)));
+            DoAll(SetArgPointee<1>(gpu_metrics), Return(AMDSMI_STATUS_SUCCESS)));
     EXPECT_CALL(*m_mock_driver, get_memory_usage(handle, _, _))
-        .WillRepeatedly(Return(AMDSMI_STATUS_SUCCESS));
-    EXPECT_CALL(*m_mock_driver, get_temperature_metric(handle, _, _, _))
         .WillRepeatedly(Return(AMDSMI_STATUS_SUCCESS));
 
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
@@ -278,17 +264,11 @@ TEST_F(processor_test, get_supported_metrics_returns_correct_flags)
     EXPECT_TRUE(supported.bits.edge_temperature);
 }
 
-TEST_F(processor_test, get_supported_metrics_when_power_not_supported)
+TEST_F(processor_test, get_supported_metrics_when_metrics_info_not_supported)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    EXPECT_CALL(*m_mock_driver, get_power_info(handle, _))
-        .WillRepeatedly(Return(AMDSMI_STATUS_NOT_SUPPORTED));
-    EXPECT_CALL(*m_mock_driver, get_activity(handle, _))
-        .WillRepeatedly(Return(AMDSMI_STATUS_NOT_SUPPORTED));
     EXPECT_CALL(*m_mock_driver, get_memory_usage(handle, _, _))
-        .WillRepeatedly(Return(AMDSMI_STATUS_NOT_SUPPORTED));
-    EXPECT_CALL(*m_mock_driver, get_temperature_metric(handle, _, _, _))
         .WillRepeatedly(Return(AMDSMI_STATUS_NOT_SUPPORTED));
     EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
         .WillRepeatedly(Return(AMDSMI_STATUS_NOT_SUPPORTED));
@@ -311,18 +291,14 @@ TEST_F(processor_test, get_supported_metrics_with_metric_value_not_supported)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    amdsmi_power_info_t power_info{};
-    power_info.current_socket_power = METRIC_VALUE_NOT_SUPPORTED;
-    power_info.average_socket_power = METRIC_VALUE_NOT_SUPPORTED;
+    amdsmi_gpu_metrics_t gpu_metrics{};
+    gpu_metrics.current_socket_power = METRIC_VALUE_NOT_SUPPORTED;
+    gpu_metrics.average_socket_power = METRIC_VALUE_NOT_SUPPORTED;
+    gpu_metrics.average_gfx_activity = METRIC_VALUE_NOT_SUPPORTED;
 
-    amdsmi_engine_usage_t activity{};
-    activity.gfx_activity = METRIC_VALUE_NOT_SUPPORTED;
-
-    EXPECT_CALL(*m_mock_driver, get_power_info(handle, _))
+    EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
         .WillRepeatedly(
-            DoAll(SetArgPointee<1>(power_info), Return(AMDSMI_STATUS_SUCCESS)));
-    EXPECT_CALL(*m_mock_driver, get_activity(handle, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(activity), Return(AMDSMI_STATUS_SUCCESS)));
+            DoAll(SetArgPointee<1>(gpu_metrics), Return(AMDSMI_STATUS_SUCCESS)));
 
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
@@ -538,15 +514,16 @@ TEST_F(processor_test, pcie_metrics_supported_when_bandwidth_acc_valid)
     EXPECT_TRUE(supported.bits.pcie);
 }
 
-TEST_F(processor_test, activity_metrics_failed_during_collection)
+TEST_F(processor_test, metrics_failed_during_collection)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    amdsmi_engine_usage_t init_activity{};
-    init_activity.gfx_activity = 50;
+    amdsmi_gpu_metrics_t init_metrics{};
+    init_metrics.average_gfx_activity = 50;
+    init_metrics.current_socket_power = 1500;
 
-    EXPECT_CALL(*m_mock_driver, get_activity(handle, _))
-        .WillOnce(DoAll(SetArgPointee<1>(init_activity), Return(AMDSMI_STATUS_SUCCESS)))
+    EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
+        .WillOnce(DoAll(SetArgPointee<1>(init_metrics), Return(AMDSMI_STATUS_SUCCESS)))
         .WillRepeatedly(Return(AMDSMI_STATUS_IO));
 
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
@@ -554,26 +531,7 @@ TEST_F(processor_test, activity_metrics_failed_during_collection)
     auto metrics = proc.get_smi_metrics();
 
     EXPECT_EQ(metrics.gfx_activity, 0u);
-}
-
-TEST_F(processor_test, power_metrics_failed_during_collection)
-{
-    amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
-
-    amdsmi_power_info_t init_power{};
-    init_power.current_socket_power = 150000;
-    init_power.average_socket_power = 140000;
-
-    EXPECT_CALL(*m_mock_driver, get_power_info(handle, _))
-        .WillOnce(DoAll(SetArgPointee<1>(init_power), Return(AMDSMI_STATUS_SUCCESS)))
-        .WillRepeatedly(Return(AMDSMI_STATUS_IO));
-
-    processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
-
-    auto metrics = proc.get_smi_metrics();
-
     EXPECT_EQ(metrics.current_socket_power, 0u);
-    EXPECT_EQ(metrics.average_socket_power, 0u);
 }
 
 TEST_F(processor_test, get_smi_metrics_with_all_xgmi_links)
@@ -636,10 +594,13 @@ TEST_F(processor_test, temperature_metric_returned_as_not_supported_value)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    EXPECT_CALL(*m_mock_driver, get_temperature_metric(handle, _, _, _))
+    amdsmi_gpu_metrics_t gpu_metrics{};
+    gpu_metrics.temperature_hotspot = METRIC_VALUE_NOT_SUPPORTED;
+    gpu_metrics.temperature_edge    = METRIC_VALUE_NOT_SUPPORTED;
+
+    EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
         .WillRepeatedly(
-            DoAll(SetArgPointee<3>(static_cast<int64_t>(METRIC_VALUE_NOT_SUPPORTED)),
-                  Return(AMDSMI_STATUS_SUCCESS)));
+            DoAll(SetArgPointee<1>(gpu_metrics), Return(AMDSMI_STATUS_SUCCESS)));
 
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
@@ -653,13 +614,13 @@ TEST_F(processor_test, edge_temperature_supported_but_hotspot_not)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    EXPECT_CALL(*m_mock_driver,
-                get_temperature_metric(handle, AMDSMI_TEMPERATURE_TYPE_HOTSPOT, _, _))
-        .WillRepeatedly(Return(AMDSMI_STATUS_NOT_SUPPORTED));
+    amdsmi_gpu_metrics_t gpu_metrics{};
+    gpu_metrics.temperature_hotspot = METRIC_VALUE_NOT_SUPPORTED;
+    gpu_metrics.temperature_edge    = 65;
 
-    EXPECT_CALL(*m_mock_driver,
-                get_temperature_metric(handle, AMDSMI_TEMPERATURE_TYPE_EDGE, _, _))
-        .WillRepeatedly(DoAll(SetArgPointee<3>(65000), Return(AMDSMI_STATUS_SUCCESS)));
+    EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
+        .WillRepeatedly(
+            DoAll(SetArgPointee<1>(gpu_metrics), Return(AMDSMI_STATUS_SUCCESS)));
 
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
@@ -686,17 +647,18 @@ TEST_F(processor_test, shared_driver_across_multiple_processors)
     EXPECT_EQ(proc2->get_handle(), handle2);
 }
 
-TEST_F(processor_test, umc_and_mm_activity_always_supported_when_activity_succeeds)
+TEST_F(processor_test, umc_and_mm_activity_supported_when_gfx_not)
 {
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
-    amdsmi_engine_usage_t activity{};
-    activity.gfx_activity = METRIC_VALUE_NOT_SUPPORTED;
-    activity.umc_activity = 50;
-    activity.mm_activity  = 60;
+    amdsmi_gpu_metrics_t gpu_metrics{};
+    gpu_metrics.average_gfx_activity = METRIC_VALUE_NOT_SUPPORTED;
+    gpu_metrics.average_umc_activity = 50;
+    gpu_metrics.average_mm_activity  = 60;
 
-    EXPECT_CALL(*m_mock_driver, get_activity(handle, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(activity), Return(AMDSMI_STATUS_SUCCESS)));
+    EXPECT_CALL(*m_mock_driver, get_metrics_info(handle, _))
+        .WillRepeatedly(
+            DoAll(SetArgPointee<1>(gpu_metrics), Return(AMDSMI_STATUS_SUCCESS)));
 
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 

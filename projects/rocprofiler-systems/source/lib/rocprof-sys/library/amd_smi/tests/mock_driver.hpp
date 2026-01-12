@@ -35,14 +35,6 @@ public:
     MOCK_METHOD(amdsmi_status_t, get_processor_type,
                 (amdsmi_processor_handle processor_handle,
                  processor_type_t*       processor_type));
-    MOCK_METHOD(amdsmi_status_t, get_activity,
-                (amdsmi_processor_handle processor_handle, amdsmi_engine_usage_t* info));
-    MOCK_METHOD(amdsmi_status_t, get_temperature_metric,
-                (amdsmi_processor_handle     processor_handle,
-                 amdsmi_temperature_type_t   sensor_type,
-                 amdsmi_temperature_metric_t metric, int64_t* temperature));
-    MOCK_METHOD(amdsmi_status_t, get_power_info,
-                (amdsmi_processor_handle processor_handle, amdsmi_power_info_t* info));
     MOCK_METHOD(amdsmi_status_t, get_memory_usage,
                 (amdsmi_processor_handle processor_handle, amdsmi_memory_type_t type,
                  uint64_t* usage));
@@ -57,10 +49,6 @@ public:
 
         ON_CALL(*this, init(_)).WillByDefault(Return(AMDSMI_STATUS_SUCCESS));
         ON_CALL(*this, shutdown()).WillByDefault(Return(AMDSMI_STATUS_SUCCESS));
-        ON_CALL(*this, get_activity(_, _)).WillByDefault(Return(AMDSMI_STATUS_SUCCESS));
-        ON_CALL(*this, get_temperature_metric(_, _, _, _))
-            .WillByDefault(Return(AMDSMI_STATUS_SUCCESS));
-        ON_CALL(*this, get_power_info(_, _)).WillByDefault(Return(AMDSMI_STATUS_SUCCESS));
         ON_CALL(*this, get_memory_usage(_, _, _))
             .WillByDefault(Return(AMDSMI_STATUS_SUCCESS));
         ON_CALL(*this, get_metrics_info(_, _))

@@ -49,10 +49,7 @@ struct amd_smi_driver
         return amdsmi_init(init_flags);
     }
 
-    static amdsmi_status_t shutdown()
-    {
-        return amdsmi_shut_down();
-    }
+    static amdsmi_status_t shutdown() { return amdsmi_shut_down(); }
 
     static amdsmi_status_t get_version(amdsmi_version_t* version)
     {
@@ -65,9 +62,9 @@ struct amd_smi_driver
         return amdsmi_get_socket_handles(socket_count, socket_handles);
     }
 
-    static amdsmi_status_t get_processor_handles(amdsmi_socket_handle     socket_handle,
-                                                 uint32_t*                processor_count,
-                                                 amdsmi_processor_handle* processor_handles)
+    static amdsmi_status_t get_processor_handles(
+        amdsmi_socket_handle socket_handle, uint32_t* processor_count,
+        amdsmi_processor_handle* processor_handles)
     {
         return amdsmi_get_processor_handles(socket_handle, processor_count,
                                             processor_handles);
@@ -79,34 +76,8 @@ struct amd_smi_driver
         return amdsmi_get_processor_type(processor_handle, processor_type);
     }
 
-    static amdsmi_status_t get_activity(amdsmi_processor_handle processor_handle,
-                                        amdsmi_engine_usage_t*  info)
-    {
-        return amdsmi_get_gpu_activity(processor_handle, info);
-    }
-
-    static amdsmi_status_t get_temperature_metric(amdsmi_processor_handle     processor_handle,
-                                                  amdsmi_temperature_type_t   sensor_type,
-                                                  amdsmi_temperature_metric_t metric,
-                                                  int64_t*                    temperature)
-    {
-        return amdsmi_get_temp_metric(processor_handle, sensor_type, metric, temperature);
-    }
-
-    static amdsmi_status_t get_power_info(amdsmi_processor_handle processor_handle,
-                                          amdsmi_power_info_t*    info)
-    {
-#    if(AMDSMI_LIB_VERSION_MAJOR == 2 && AMDSMI_LIB_VERSION_MINOR == 0) ||               \
-        (AMDSMI_LIB_VERSION_MAJOR == 25 && AMDSMI_LIB_VERSION_MINOR == 2)
-        return amdsmi_get_power_info(processor_handle, 0, info);
-#    else
-        return amdsmi_get_power_info(processor_handle, info);
-#    endif
-    }
-
     static amdsmi_status_t get_memory_usage(amdsmi_processor_handle processor_handle,
-                                            amdsmi_memory_type_t    type,
-                                            uint64_t*               usage)
+                                            amdsmi_memory_type_t type, uint64_t* usage)
     {
         return amdsmi_get_gpu_memory_usage(processor_handle, type, usage);
     }
@@ -115,11 +86,6 @@ struct amd_smi_driver
                                             amdsmi_gpu_metrics_t*   metrics)
     {
         return amdsmi_get_gpu_metrics_info(processor_handle, metrics);
-    }
-
-    static amdsmi_status_t status_to_string(amdsmi_status_t status, const char** msg)
-    {
-        return amdsmi_status_code_to_string(status, msg);
     }
 };
 
