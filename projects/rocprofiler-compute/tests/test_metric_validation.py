@@ -73,7 +73,9 @@ VALIDATE_METRICS = {
             },
         ],
         # Ignore warmup dispatch
-        "profile_options": ["-d", "2-1001"],
+        # Collect roofline block
+        "profile_options": ["-d", "2-1001", "-b", "4"],
+        "roof": True,
     }
 }
 
@@ -98,16 +100,13 @@ def test_validate_metrics(
         )
         try:
             # Ensure non zero length of profile df
-            options = VALIDATE_METRICS[workload].get("profile_options", []) + [
-                "--block",
-                *metric_ids,
-            ]
+            options = VALIDATE_METRICS[workload].get("profile_options", [])
             _ = binary_handler_profile_rocprof_compute(
                 config,
                 profile_workload_dir,
                 options,
                 check_success=True,
-                roof=False,
+                roof=VALIDATE_METRICS[workload].get("roof", False),
                 app_name=workload,
             )
             _ = test_utils.check_csv_files(
