@@ -697,7 +697,8 @@ data::sample(uint32_t _device_id)
                 serialize_settings(m_dev_id), _device_id, _timestamp,
                 m_busy_perc.gfx_activity, m_busy_perc.umc_activity,
                 m_busy_perc.mm_activity, m_power.current_socket_power, m_temp,
-                m_mem_usage, serialize_gpu_metrics(m_dev_id, metrics, capabilities) });
+                (m_mem_usage / units::megabyte),
+                serialize_gpu_metrics(m_dev_id, metrics, capabilities) });
 
             if(has_data) m_gpu_metrics.push_back(metrics);
         }
@@ -1264,10 +1265,7 @@ shutdown()
 
     try
     {
-        if(data::shutdown())
-        {
-            ROCPROFSYS_AMD_SMI_CALL(amdsmi_shut_down());
-        }
+        data::shutdown();
     } catch(std::runtime_error& _e)
     {
         ROCPROFSYS_VERBOSE(0, "Exception thrown when shutting down amd-smi: %s\n",
@@ -1291,6 +1289,35 @@ uint32_t
 device_count()
 {
     return gpu::device_count();
+}
+
+void
+postfork_child_cleanup()
+{
+    // In child process, disable AMD SMI to prevent shutdown errors
+    ROCPROFSYS_VERBOSE_F(2, "Disabling AMD SMI in child process after fork...\n");
+
+    // Set to Finalized to prevent any sampling attempts (though is_child_process() check
+    // in sample() already handles this)
+    get_state().store(State::Finalized);
+
+    // Mark as not initialized so shutdown won't try to cleanup AMD SMI library
+    is_initialized() = false;
+
+    // Clear device list to prevent any GPU operations
+    data::device_list.clear();
+}
+
+void
+postfork_parent_reinit()
+{
+    // In parent process, AMD SMI device handles may be corrupted after fork
+    // Reinitialize AMD SMI to get fresh handles
+    ROCPROFSYS_VERBOSE_F(2, "Reinitializing AMD SMI in parent process after fork...\n");
+
+    // Shutdown and reinitialize to get fresh device handles
+    shutdown();
+    setup();
 }
 }  // namespace amd_smi
 }  // namespace rocprofsys
