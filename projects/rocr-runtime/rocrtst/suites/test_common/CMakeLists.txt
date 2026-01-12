@@ -480,9 +480,13 @@ set(BITCODE_LIBS "${COMMON_BITCODE_LIBS}")
 set(CL_FILE_LIST "${KERNELS_DIR}/cu_mask_kernels.cl")
 build_sample_for_devices("cu_mask")
 
-set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+# Configure RPATH settings before creating executable target
+set(CMAKE_BUILD_WITH_INSTALL_RPATH OFF)
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+set(CMAKE_BUILD_RPATH_USE_ORIGIN TRUE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 
-# Check for numa library and headers (same approach as libhsakmt)
+# Check for numa library and header
 find_package(PkgConfig)
 find_package(NUMA)
 if(NUMA_FOUND)
@@ -566,8 +570,21 @@ add_custom_target(rocrtst_kernels ALL DEPENDS ${HSACO_TARG_LIST})
 #Build symlinks
 add_custom_target(rocrtst_links ALL DEPENDS ${ROCRTST_LINKS_LIST} )
 
-## Set RUNPATH to pickup local copy of hwloc
-set_property(TARGET ${ROCRTST} PROPERTY INSTALL_RPATH "$ORIGIN;$ORIGIN/thirdparty/lib;$ORIGIN/../lib/rocrtst/thirdparty/lib" )
+# Base RPATH directories for all builds
+set(_rocrtst_build_rpath "$ORIGIN/../../lib/rocrtst/lib;${CMAKE_CURRENT_SOURCE_DIR}/../../thirdparty/lib")
+set(_rocrtst_install_rpath "$ORIGIN;$ORIGIN/thirdparty/lib;$ORIGIN/../lib/rocrtst/thirdparty/lib;$ORIGIN/../../lib/rocrtst/lib")
+
+# Add TheRock-specific RPATH if rocm_sysdeps directory exists
+# This allows finding bundled system dependencies like libnuma
+if(EXISTS "${PROJECT_BINARY_DIR}/../lib/rocm_sysdeps/lib" OR
+   EXISTS "${CMAKE_INSTALL_PREFIX}/lib/rocm_sysdeps/lib")
+  message(STATUS "Detected TheRock build environment - adding rocm_sysdeps to RPATH")
+  set(_rocrtst_build_rpath "${_rocrtst_build_rpath};$ORIGIN/../../lib/rocm_sysdeps/lib")
+  set(_rocrtst_install_rpath "${_rocrtst_install_rpath};$ORIGIN/../../lib/rocm_sysdeps/lib")
+endif()
+
+set_property(TARGET ${ROCRTST} PROPERTY BUILD_RPATH "${_rocrtst_build_rpath}")
+set_property(TARGET ${ROCRTST} PROPERTY INSTALL_RPATH "${_rocrtst_install_rpath}")
 set_property(TARGET ${ROCRTST} PROPERTY LINK_FLAGS "-Wl,--enable-new-dtags")
 
 install(TARGETS ${ROCRTST}
