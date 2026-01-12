@@ -72,6 +72,8 @@ VALIDATE_METRICS = {
                 "expected_value": 5690.42,
             },
         ],
+        # Ignore warmup dispatch
+        "profile_options": ["-d", "2-1001"],
     }
 }
 
@@ -96,7 +98,10 @@ def test_validate_metrics(
         )
         try:
             # Ensure non zero length of profile df
-            options = ["--block", *metric_ids]
+            options = VALIDATE_METRICS[workload].get("profile_options", []) + [
+                "--block",
+                *metric_ids,
+            ]
             _ = binary_handler_profile_rocprof_compute(
                 config,
                 profile_workload_dir,
