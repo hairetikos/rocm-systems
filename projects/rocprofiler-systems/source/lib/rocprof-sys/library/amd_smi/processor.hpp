@@ -32,7 +32,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <cstring>
 #include <iterator>
 #include <limits>
 #include <memory>
@@ -166,9 +165,9 @@ private:
         {
             for(size_t xcp = 0; xcp < AMDSMI_MAX_NUM_XCP; ++xcp)
             {
-                std::memcpy(metrics.xcp_stats[xcp].vcn_busy.data(),
-                            gpu_metrics.xcp_stats[xcp].vcn_busy,
-                            sizeof(gpu_metrics.xcp_stats[xcp].vcn_busy));
+                std::copy(std::begin(gpu_metrics.xcp_stats[xcp].vcn_busy),
+                          std::end(gpu_metrics.xcp_stats[xcp].vcn_busy),
+                          metrics.xcp_stats[xcp].vcn_busy.begin());
             }
         }
 
@@ -176,9 +175,9 @@ private:
         {
             for(size_t xcp = 0; xcp < AMDSMI_MAX_NUM_XCP; ++xcp)
             {
-                std::memcpy(metrics.xcp_stats[xcp].jpeg_busy.data(),
-                            gpu_metrics.xcp_stats[xcp].jpeg_busy,
-                            sizeof(gpu_metrics.xcp_stats[xcp].jpeg_busy));
+                std::copy(std::begin(gpu_metrics.xcp_stats[xcp].jpeg_busy),
+                          std::end(gpu_metrics.xcp_stats[xcp].jpeg_busy),
+                          metrics.xcp_stats[xcp].jpeg_busy.begin());
             }
         }
     }

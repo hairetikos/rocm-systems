@@ -117,7 +117,7 @@ public:
                 {
                     // TODO: Add a warning to the logger. This is a temporary to avoid
                     // hangs with unit tests.
-                    printf("Processor %zu is not supported. Skipping.", index);
+                    printf("Processor %zu is not supported. Skipping.\n", index);
                 }
             }
         }

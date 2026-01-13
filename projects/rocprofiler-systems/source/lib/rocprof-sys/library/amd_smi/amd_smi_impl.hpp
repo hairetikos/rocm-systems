@@ -136,6 +136,7 @@ struct amd_smi_impl
                 {
                     PerfettoApi::store_sample(_device_id, _smi_metrics, _timestamp);
                 }
+                it++;
             } catch(const std::runtime_error& e)
             {
                 ROCPROFSYS_WARNING(
@@ -143,6 +144,7 @@ struct amd_smi_impl
                     "Reading metrics failed for device with ID %zu. Error: %s. "
                     "Disabling device!\n",
                     processor->get_index(), e.what());
+                m_gpu_processors.erase(it);
             }
         }
     }
