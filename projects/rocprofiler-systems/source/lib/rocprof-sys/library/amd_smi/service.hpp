@@ -28,7 +28,6 @@
 
 #pragma once
 
-#include "core/debug.hpp"
 #include "library/amd_smi/common.hpp"
 #include "library/amd_smi/processor.hpp"
 
