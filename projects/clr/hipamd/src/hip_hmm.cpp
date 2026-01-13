@@ -491,8 +491,8 @@ hipError_t ihipMemPrefetchBatchAsync(void** dev_ptrs, size_t* sizes, size_t coun
       return hipErrorInvalidValue;
     }
 
-    command = new amd::SvmPrefetchBatchAsyncCommand(*hip_stream, std::move(dev_ptrs_vec),
-                                                    std::move(sizes_vec), std::move(devices_vec));
+    command =
+        new amd::SvmPrefetchBatchAsyncCommand(*hip_stream, dev_ptrs_vec, sizes_vec, devices_vec);
   }
   if (command == nullptr) {
     return hipErrorOutOfMemory;

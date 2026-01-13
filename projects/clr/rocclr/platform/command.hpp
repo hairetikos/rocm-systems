@@ -1894,9 +1894,9 @@ class SvmPrefetchAsyncCommand : public Command {
  */
 class SvmPrefetchBatchAsyncCommand : public Command {
  public:
-  SvmPrefetchBatchAsyncCommand(HostQueue& queue, std::vector<void*>&& dev_ptrs,
-                               std::vector<size_t>&& sizes,
-                               std::vector<amd::Device*>&& target_devices)
+  SvmPrefetchBatchAsyncCommand(HostQueue& queue, std::vector<void*>& dev_ptrs,
+                               std::vector<size_t>& sizes,
+                               std::vector<amd::Device*>& target_devices)
       : Command(queue, 1),
         dev_ptrs_(std::move(dev_ptrs)),
         sizes_(std::move(sizes)),
