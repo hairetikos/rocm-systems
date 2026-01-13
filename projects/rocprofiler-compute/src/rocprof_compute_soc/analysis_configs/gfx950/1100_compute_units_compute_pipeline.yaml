@@ -319,7 +319,7 @@ Panel Config:
       busy executing instructions. Does not include VMEM operations. Computed as the
       ratio of the total number of cycles spent by the scheduler issuing VALU instructions
       over the total CU cycles.
-    Dual-issue VALU Utilization: 
+    Dual-issue VALU Utilization: >-
       Indicates what percent of the kernel's duration the VALU was busy executing
       dual-issued instructions. Computed as the ratio of the total number of cycles
       spent by the scheduler co-issuing VALU instructions over the total
