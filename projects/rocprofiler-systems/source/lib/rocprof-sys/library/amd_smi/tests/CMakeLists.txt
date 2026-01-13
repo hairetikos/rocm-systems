@@ -20,17 +20,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-set(amd_smi_tests_sources
-    tests_amd_smi_impl.cpp
-    tests_processor.cpp
-    tests_service.cpp
-)
+set(amd_smi_tests_sources tests_amd_smi_impl.cpp tests_processor.cpp tests_service.cpp)
 
 add_library(amd-smi-tests OBJECT ${amd_smi_tests_sources})
 
 target_link_libraries(
     amd-smi-tests
-    PRIVATE rocprofiler-systems-googletest-library rocprofiler-systems-core-library rocprofiler-systems-interface-library
+    PRIVATE
+        rocprofiler-systems-googletest-library
+        rocprofiler-systems-core-library
+        rocprofiler-systems-interface-library
 )
 
-target_include_directories(amd-smi-tests PRIVATE ${PROJECT_SOURCE_DIR}/source/lib/core ${PROJECT_SOURCE_DIR}/source/lib/rocprof-sys)
+target_include_directories(
+    amd-smi-tests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/source/lib/core
+        ${PROJECT_SOURCE_DIR}/source/lib/rocprof-sys
+)

@@ -705,19 +705,19 @@ TEST_F(processor_test, is_supported_returns_false_when_all_metrics_unsupported)
     amdsmi_processor_handle handle = reinterpret_cast<amdsmi_processor_handle>(0x1234);
 
     amdsmi_gpu_metrics_t gpu_metrics{};
-    gpu_metrics.current_socket_power  = UINT16_MAX;
-    gpu_metrics.average_socket_power  = UINT16_MAX;
-    gpu_metrics.temperature_hotspot   = UINT16_MAX;
-    gpu_metrics.temperature_edge      = UINT16_MAX;
-    gpu_metrics.average_gfx_activity  = UINT16_MAX;
-    gpu_metrics.average_umc_activity  = UINT16_MAX;
-    gpu_metrics.average_mm_activity   = UINT16_MAX;
-    gpu_metrics.pcie_link_width       = UINT16_MAX;
-    gpu_metrics.pcie_link_speed       = UINT16_MAX;
-    gpu_metrics.pcie_bandwidth_acc    = UINT64_MAX;
-    gpu_metrics.pcie_bandwidth_inst   = UINT64_MAX;
-    gpu_metrics.xgmi_link_width       = UINT16_MAX;
-    gpu_metrics.xgmi_link_speed       = UINT16_MAX;
+    gpu_metrics.current_socket_power = UINT16_MAX;
+    gpu_metrics.average_socket_power = UINT16_MAX;
+    gpu_metrics.temperature_hotspot  = UINT16_MAX;
+    gpu_metrics.temperature_edge     = UINT16_MAX;
+    gpu_metrics.average_gfx_activity = UINT16_MAX;
+    gpu_metrics.average_umc_activity = UINT16_MAX;
+    gpu_metrics.average_mm_activity  = UINT16_MAX;
+    gpu_metrics.pcie_link_width      = UINT16_MAX;
+    gpu_metrics.pcie_link_speed      = UINT16_MAX;
+    gpu_metrics.pcie_bandwidth_acc   = UINT64_MAX;
+    gpu_metrics.pcie_bandwidth_inst  = UINT64_MAX;
+    gpu_metrics.xgmi_link_width      = UINT16_MAX;
+    gpu_metrics.xgmi_link_speed      = UINT16_MAX;
 
     for(auto& val : gpu_metrics.xgmi_read_data_acc)
     {

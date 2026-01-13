@@ -11,7 +11,8 @@ set(amd_smi_sources
 add_library(rocprofiler-systems-amd-smi-library OBJECT ${amd_smi_sources})
 
 target_link_libraries(
-    rocprofiler-systems-amd-smi-library PRIVATE rocprofiler-systems-googletest-library rocprofiler-systems-core-library
+    rocprofiler-systems-amd-smi-library
+    PRIVATE rocprofiler-systems-googletest-library rocprofiler-systems-core-library
 )
 
 if(ROCPROFSYS_BUILD_TESTING)
