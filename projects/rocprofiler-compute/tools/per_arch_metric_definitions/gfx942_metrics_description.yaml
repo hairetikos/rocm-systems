@@ -5,55 +5,55 @@ System Speed-of-Light:
       <desc-valu>`. This is also presented as a percent of the peak theoretical FLOPs
       achievable on the specific accelerator. Note: this does not include any floating-point
       operations from :ref:`MFMA <desc-mfma>` instructions.'
-    unit: GFLOPs
+    unit: GFLOP/s
   VALU IOPs:
     rst: 'The total integer operations executed per second on the :ref:`VALU <desc-valu>`.
       This is also presented as a percent of the peak theoretical IOPs achievable
       on the specific accelerator. Note: this does not include any integer operations
       from :ref:`MFMA <desc-mfma>` instructions.'
-    unit: GOIPs
+    unit: GIOP/s
   MFMA FLOPs (F8):
     rst: 'The total number of 8-bit brain floating point :ref:`MFMA <desc-mfma>` operations
       executed per second. Note: this does not include any 16-bit brain floating point
       operations from :ref:`VALU <desc-valu>` instructions. This is also presented
       as a percent of the peak theoretical F8 MFMA operations achievable on the specific
       accelerator. It is supported on AMD Instinct MI300 series and later only.'
-    unit: GFLOPs
+    unit: GFLOP/s
   MFMA FLOPs (BF16):
     rst: 'The total number of 16-bit brain floating point :ref:`MFMA <desc-mfma>`
       operations executed per second. Note: this does not include any 16-bit brain
       floating point operations from :ref:`VALU <desc-valu>` instructions. This is
       also presented as a percent of the peak theoretical BF16 MFMA operations achievable
       on the specific accelerator.'
-    unit: GFLOPs
+    unit: GFLOP/s
   MFMA FLOPs (F16):
     rst: 'The total number of 16-bit floating point :ref:`MFMA <desc-mfma>` operations
       executed per second. Note: this does not include any 16-bit floating point operations
       from :ref:`VALU <desc-valu>` instructions. This is also presented as a percent
       of the peak theoretical F16 MFMA operations achievable on the specific accelerator.'
-    unit: GFLOPs
+    unit: GFLOP/s
   MFMA FLOPs (F32):
     rst: 'The total number of 32-bit floating point :ref:`MFMA <desc-mfma>` operations
       executed per second. Note: this does not include any 32-bit floating point operations
       from :ref:`VALU <desc-valu>` instructions. This is also presented as a percent
       of the peak theoretical F32 MFMA operations achievable on the specific accelerator.'
-    unit: GFLOPs
+    unit: GFLOP/s
   MFMA FLOPs (F64):
     rst: 'The total number of 64-bit floating point :ref:`MFMA <desc-mfma>` operations
       executed per second. Note: this does not include any 64-bit floating point operations
       from :ref:`VALU <desc-valu>` instructions. This is also presented as a percent
       of the peak theoretical F64 MFMA operations achievable on the specific accelerator.'
-    unit: GFLOPs
+    unit: GFLOP/s
   MFMA IOPs (Int8):
     rst: 'The total number of 8-bit integer :ref:`MFMA <desc-mfma>` operations executed
       per second. Note: this does not include any 8-bit integer operations from :ref:`VALU
       <desc-valu>` instructions. This is also presented as a percent of the peak theoretical
       INT8 MFMA operations achievable on the specific accelerator.'
-    unit: GIOPs
+    unit: GIOP/s
   Active CUs (deprecated):
     rst: Total number of active compute units (CUs) on the accelerator during the
       kernel execution. (Deprecated - See CU Utilization instead)
-    unit: Number
+    unit: CUs
   SALU Utilization:
     rst: Indicates what percent of the kernel's duration the :ref:`SALU <desc-salu>`
       was busy executing instructions. Computed as the ratio of the total number of
@@ -95,7 +95,7 @@ System Speed-of-Light:
   IPC:
     rst: The ratio of the total number of instructions executed on the :doc:`CU <compute-unit>`
       over the :ref:`total active CU cycles <total-active-cu-cycles>`.
-    unit: Instructions per-cycle
+    unit: Instructions per cycle
   Wavefront Occupancy:
     rst: 'The time-averaged number of wavefronts resident on the accelerator over
       the lifetime of the kernel. Note: this metric may be inaccurate for short-running
@@ -114,7 +114,7 @@ System Speed-of-Light:
       the base number of cycles that would be spent in the LDS scheduler in a completely
       uncontended case. This is also presented in normalized form (i.e., the Bank
       Conflict Rate).
-    unit: Conflicts/Access
+    unit: Conflicts per Access
   vL1D Cache Hit Rate:
     rst: The ratio of the number of vL1D cache line requests that hit in vL1D cache
       over the total number of cache line requests to the :ref:`vL1D cache RAM <desc-tc>`.
@@ -172,12 +172,12 @@ System Speed-of-Light:
     rst: The percent of L1I requests that hit on a previously loaded line the cache.
       Calculated as the ratio of the number of L1I requests that hit over the number
       of all L1I requests.
-    unit: GB/s
+    unit: Percent
   L1I BW:
     rst: The number of bytes looked up in the L1I cache per unit time. This is also
       presented as a percent of the peak theoretical bandwidth achievable on the specific
       accelerator.
-    unit: Percent
+    unit: GB/s
   L1I Fetch Latency:
     rst: The average number of cycles spent to fetch instructions to a :doc:`CU <compute-unit>`.
     unit: Cycles
@@ -189,203 +189,318 @@ System Speed-of-Light:
     unit: Percent
 General:
   Wavefront Occupancy:
-    rst: ''
+    rst: Wavefronts per active CU.
   Wave Life:
-    rst: ''
+    rst: Average number of cycles executing a wave.
   SALU:
-    rst: ''
+    rst: Total Number of SALU (Scalar ALU) instructions issued per normalization unit.
   SMEM:
-    rst: ''
+    rst: Total number of SMEM (Scalar Memory Read) instructions issued normalization
+      unit.
   VALU:
-    rst: ''
+    rst: The number of VALU (Vector ALU) instructions issued per normalization unit.
   MFMA:
-    rst: ''
+    rst: Total number of MFMA (Matrix-Fused-Multiply-Add) instructions issued per
+      normalization unit.
   VMEM:
-    rst: ''
+    rst: The number of VMEM (GPU Memory) read instructions issued (including FLAT/scratch
+      memory) per normalization unit.
   LDS:
-    rst: ''
+    rst: The total number of LDS instructions (including, but not limited to, read/write/atomics
+      and HIP's __shfl instructions) executed per normalization unit.
   GWS:
-    rst: ''
+    rst: Total number of GDS (global data sync) instructions issued per normalization
+      unit.
   BR:
-    rst: ''
+    rst: Total number of BRANCH instructions issued per normalization unit.
   Active CUs (deprecated):
-    rst: ''
+    rst: Total number of active compute units (CUs) on the accelerator during the
+      kernel execution. (Deprecated - See CU Utilization instead)
   Num CUs:
-    rst: ''
+    rst: Total number of compute units (CUs) on the accelerator.
   VGPR:
-    rst: ''
+    rst: 'The number of architected vector general-purpose registers allocated for
+      the kernel, see VALU. Note: this may not exactly match the number of VGPRs requested
+      by the compiler due to allocation granularity.'
   SGPR:
-    rst: ''
+    rst: 'The number of scalar general-purpose registers allocated for the kernel,
+      see SALU. Note: this may not exactly match the number of SGPRs requested by
+      the compiler due to allocation granularity.'
   LDS Allocation:
-    rst: ''
+    rst: 'The number of bytes of LDS memory (or, shared memory) allocated for this
+      kernel. Note: This may also be larger than what was requested at compile time
+      due to both allocation granularity and dynamic per-dispatch LDS allocations.'
   Scratch Allocation:
-    rst: ''
+    rst: The number of bytes of scratch memory requested per work-item for this kernel.
+      Scratch memory is used for stack memory on the accelerator, as well as for register
+      spills and restores.
   Wavefronts:
-    rst: ''
+    rst: The total number of wavefronts, summed over all workgroups, forming this
+      kernel launch.
   Workgroups:
-    rst: ''
+    rst: The total number of workgroups forming this kernel launch.
   LDS Req:
-    rst: ''
+    rst: The total number of LDS instructions (including, but not limited to, read/write/atomics
+      and HIP's __shfl instructions) executed per normalization unit.
   LDS Util:
-    rst: ''
+    rst: Indicates what percent of the kernel's duration the LDS was actively executing
+      instructions (including, but not limited to, load, store, atomic and HIP's __shfl
+      operations). Calculated as the ratio of the total number of cycles LDS was active
+      over the total CU cycles.
   LDS Latency:
-    rst: ''
+    rst: The average number of round-trip cycles (i.e., from issue to data-return
+      / acknowledgment) required for an LDS instruction to complete.
   VL1 Rd:
-    rst: ''
+    rst: The total number of incoming read requests from the address processing unit
+      after coalescing per normalization unit
   VL1 Wr:
-    rst: ''
+    rst: The total number of incoming write requests from the address processing unit
+      after coalescing per normalization unit
   VL1 Atomic:
-    rst: ''
+    rst: The total number of incoming atomic requests from the address processing
+      unit after coalescing per normalization unit
   VL1 Hit:
-    rst: ''
+    rst: The ratio of the number of vL1D cache line requests that hit in vL1D cache
+      over the total number of cache line requests to the vL1D Cache RAM.
   VL1 Coalesce:
-    rst: ''
+    rst: Indicates how well memory instructions were coalesced by the address processing
+      unit, ranging from uncoalesced (25%) to fully coalesced (100%). Calculated as
+      the average number of thread-requests generated per instruction divided by the
+      ideal number of thread-requests per instruction.
   VL1 Stall:
-    rst: ''
+    rst: The ratio of the number of cycles where the vL1D is stalled waiting to issue
+      a request for data to the L2 cache divided by the number of cycles where the
+      vL1D is active.
   VL1_L2 Rd:
-    rst: ''
+    rst: The number of read requests for a vL1D cache line that were not satisfied
+      by the vL1D and must be retrieved from the to the L2 Cache per normalization
+      unit.
   VL1_L2 Wr:
-    rst: ''
+    rst: The number of write requests to a vL1D cache line that were sent through
+      the vL1D to the L2 cache, per normalization unit.
   VL1_L2 Atomic:
-    rst: ''
+    rst: The number of atomic requests that are sent through the vL1D to the L2 cache,
+      per normalization unit. This includes requests for atomics with, and without
+      return.
   sL1D Rd:
-    rst: ''
+    rst: The total number of requests, of any size or type, made to the sL1D per normalization
+      unit.
   sL1D Hit:
-    rst: ''
+    rst: The total number of sL1D requests that hit on a previously loaded cache line,
+      per normalization unit.
   sL1D_L2 Rd:
-    rst: ''
+    rst: The total number of read requests from sL1D to the L2, per normalization
+      unit.
   sL1D_L2 Wr:
-    rst: ''
+    rst: The total number of write requests from sL1D to the L2, per normalization
+      unit. Typically unused on current CDNA accelerators.
   sL1D_L2 Atomic:
-    rst: ''
+    rst: The total number of atomic requests from sL1D to the L2, per normalization
+      unit. Typically unused on current CDNA accelerators.
   IL1 Fetch:
-    rst: ''
+    rst: The total number of requests made to the L1I per normalization-unit.
   IL1 Hit:
-    rst: ''
+    rst: The percent of L1I requests that hit on a previously loaded line the cache.
+      Calculated as the ratio of the number of L1I requests that hit over the number
+      of all L1I requests.
   IL1 Lat:
-    rst: ''
+    rst: The average number of cycles spent to fetch instructions to a CU.
   IL1_L2 Rd:
-    rst: ''
+    rst: The total number of requests across the L1I - L2 interface per normalization-unit.
   L2 Rd:
-    rst: ''
+    rst: The total number of read requests to the L2 from all clients.
   L2 Wr:
-    rst: ''
+    rst: The total number of write requests to the L2 from all clients.
   L2 Atomic:
-    rst: ''
+    rst: The total number of atomic requests (with and without return) to the L2 from
+      all clients.
   L2 Hit:
-    rst: ''
+    rst: The ratio of the number of L2 cache line requests that hit in the L2 cache
+      over the total number of incoming cache line requests to the L2 cache.
   Fabric_L2 Rd:
-    rst: ''
+    rst: Number of L2 cache - Infinity Fabric read requests (either 32-byte or 64-byte)
+      summed over TCC instances per normalization unit.
   Fabric_L2 Wr:
-    rst: ''
+    rst: Number of L2 cache - Infinity Fabric write requests (either 32-byte or 64-byte)
+      summed over TCC instances per normalization unit.
   Fabric_L2 Atomic:
-    rst: ''
+    rst: Number of L2 cache - Infinity Fabric write requests (either 32-byte or 64-byte)
+      that are actually atomic requests summed over TCC instances per normalization
+      unit.
   Fabric Rd Lat:
-    rst: ''
+    rst: The time-averaged number of cycles read requests spent in Infinity Fabric
+      before data was returned to the L2.
   Fabric Wr Lat:
-    rst: ''
+    rst: The time-averaged number of cycles write requests spent in Infinity Fabric
+      before a completion acknowledgement was returned to the L2.
   Fabric Atomic Lat:
-    rst: ''
+    rst: The time-averaged number of cycles atomic requests spent in Infinity Fabric
+      before a completion acknowledgement (atomic without return value) or data (atomic
+      with return value) was returned to the L2.
   HBM Rd:
-    rst: ''
+    rst: The total number of L2 requests to Infinity Fabric to read 32B or 64B of
+      data from the accelerator's local HBM, per normalization unit.
   HBM Wr:
-    rst: ''
+    rst: The total number of L2 requests to Infinity Fabric to write or atomically
+      update 32B or 64B of data in the accelerator's local HBM, per normalization
+      unit.
   VALU FLOPs (F16):
-    rst: ''
+    rst: 'The total 16-bit floating-point operations executed per second on the VALU.
+      This is presented with the value of the peak empirical F16 FLOPs achievable
+      on the specific accelerator. Note: this does not include any F16 operations
+      from MFMA instructions.'
   VALU FLOPs (F32):
-    rst: ''
+    rst: 'The total 32-bit floating-point operations executed per second on the VALU.
+      This is presented with the value of the peak empirical F32 FLOPs achievable
+      on the specific accelerator. Note: this does not include any F32 operations
+      from MFMA instructions.'
   VALU FLOPs (F64):
-    rst: ''
+    rst: 'The total 64-bit floating-point operations executed per second on the VALU.
+      This is presented with the value of the peak empirical F64 FLOPs achievable
+      on the specific accelerator. Note: this does not include any F64 operations
+      from MFMA instructions.'
   MFMA FLOPs (F8):
-    rst: ''
+    rst: The total number of 8-bit brain floating point MFMA operations executed per
+      second. This does not include any 16-bit brain floating point operations from
+      VALU instructions. The peak empirically measured F8 MFMA operations achievable
+      on the specific accelerator is displayed alongside for comparison. It is supported
+      on AMD Instinct MI300 series and later only.
   MFMA FLOPs (BF16):
-    rst: ''
+    rst: 'The total number of 16-bit brain floating point MFMA operations executed
+      per second. Note: this does not include any 16-bit brain floating point operations
+      from VALU instructions. The peak empirically measured BF16 MFMA operations achievable
+      on the specific accelerator is displayed alongside for comparison.'
   MFMA FLOPs (F16):
-    rst: ''
+    rst: 'The total number of 16-bit floating point MFMA operations executed per second.
+      Note: this does not include any 16-bit floating point operations from VALU instructions.
+      The peak empirically measured F16 MFMA operations achievable on the specific
+      accelerator is displayed alongside for comparison.'
   MFMA FLOPs (F32):
-    rst: ''
+    rst: 'The total number of 32-bit floating point MFMA operations executed per second.
+      Note: this does not include any 32-bit floating point operations from VALU instructions.
+      The peak empirically measured F32 MFMA operations achievable on the specific
+      accelerator is displayed alongside for comparison.'
   MFMA FLOPs (F64):
-    rst: ''
+    rst: 'The total number of 64-bit floating point MFMA operations executed per second.
+      Note: this does not include any 64-bit floating point operations from VALU instructions.
+      The peak empirically measured F64 MFMA operations achievable on the specific
+      accelerator is displayed alongside for comparison.'
   MFMA IOPs (Int8):
-    rst: ''
+    rst: 'The total number of 8-bit integer MFMA operations executed per second. Note:
+      this does not include any 8-bit integer operations from VALU instructions. The
+      peak empirically measured INT8 MFMA operations achievable on the specific accelerator
+      is displayed alongside for comparison.'
   HBM Bandwidth:
-    rst: ''
+    rst: The total number of bytes read from and written to High-Bandwidth Memory
+      (HBM) per second. The peak empirically measured bandwidth achievable on the
+      specific accelerator is displayed alongside for comparison.
   L2 Cache Bandwidth:
-    rst: ''
+    rst: The number of bytes looked up in the L2 cache per unit time. The number of
+      bytes is calculated as the number of cache lines requested multiplied by the
+      cache line size. This value does not consider partial requests, so e.g., if
+      only a single value is requested in a cache line, the data movement will still
+      be counted as a full cache line. The peak empirically measured bandwidth achievable
+      on the specific accelerator is displayed alongside for comparison.
   L1 Cache Bandwidth:
-    rst: ''
+    rst: The number of bytes looked up in the vL1D cache as a result of VMEM instructions
+      per unit time. The number of bytes is calculated as the number of cache lines
+      requested multiplied by the cache line size. This value does not consider partial
+      requests, so e.g., if only a single value is requested in a cache line, the
+      data movement will still be counted as a full cache line. The peak empirically
+      measured bandwidth achievable on the specific accelerator is displayed alongside
+      for comparison.
   LDS Bandwidth:
-    rst: ''
+    rst: Indicates the maximum amount of bytes that could have been loaded from, stored
+      to, or atomically updated in the LDS per unit time (see LDS Bandwidth example
+      for more detail). The peak empirically measured LDS bandwidth achievable on
+      the specific accelerator is displayed alongside for comparison.
   AI L1:
-    rst: ''
+    rst: The Arithmetic Intensity (AI) relative to the L1 Cache. It is the ratio of
+      total floating-point operations (FLOPs) to total bytes transferred between the
+      L1 cache and the processing units. This value is used as the x-coordinate for
+      the L1 roofline.
   AI L2:
-    rst: ''
+    rst: The Arithmetic Intensity (AI) relative to the L2 Cache. It is the ratio of
+      total floating-point operations (FLOPs) to total bytes transferred between the
+      L2 cache and the L1 cache. This value is used as the x-coordinate for the L2
+      roofline.
   AI HBM:
-    rst: ''
+    rst: The Arithmetic Intensity (AI) relative to High-Bandwidth Memory (HBM). It
+      is the ratio of total floating-point operations (FLOPs) to total bytes transferred
+      between HBM and the L2 cache. This value is used as the x-coordinate for the
+      HBM roofline.
   Performance (GFLOPs):
-    rst: ''
+    rst: The overall achieved performance, measured in GigaFLOPs per second (GFLOP/s).
+      This is calculated as the sum of all VALU and MFMA floating-point operations
+      divided by the total execution time. This value is used as the y-coordinate
+      for the kernel's point on the Roofline plot.
   Global/Generic Instr:
-    rst: ''
+    rst: The total number of global & generic memory instructions executed on all
+      compute units on the accelerator, per normalization unit.
   Global/Generic Read:
-    rst: ''
+    rst: The total number of global & generic memory read instructions executed on
+      all compute units on the accelerator, per normalization unit.
   Global/Generic Write:
-    rst: ''
+    rst: The total number of global & generic memory write instructions executed on
+      all compute units on the accelerator, per normalization unit.
   Global/Generic Atomic:
-    rst: ''
+    rst: The total number of global & generic memory atomic (with and without return)
+      instructions executed on all compute units on the accelerator, per normalization
+      unit.
   Spill/Stack Instr:
-    rst: ''
+    rst: The total number of spill/stack memory instructions executed on all compute
+      units on the accelerator, per normalization unit.
   Spill/Stack Read:
-    rst: ''
+    rst: The total number of spill/stack memory read instructions executed on all
+      compute units on the accelerator, per normalization unit.
   Spill/Stack Write:
-    rst: ''
+    rst: The total number of spill/stack memory write instructions executed on all
+      compute units on the accelerator, per normalization unit.
   Spill/Stack Atomic:
-    rst: ''
-  Stalled on L2 Data:
-    rst: ''
-  Stalled on L2 Req:
-    rst: ''
-  Tag RAM Stall (Read):
-    rst: ''
-  Tag RAM Stall (Write):
-    rst: ''
-  Tag RAM Stall (Atomic):
-    rst: ''
+    rst: The total number of spill/stack memory atomic (with and without return) instructions
+      executed on all compute units on the accelerator, per normalization unit. Typically
+      unused as these memory operations are typically used to implement thread-local
+      storage.
   NC - Read:
-    rst: ''
+    rst: Total read requests with NC mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   UC - Read:
-    rst: ''
+    rst: Total read requests with UC mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   CC - Read:
-    rst: ''
+    rst: Total read requests with CC mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   RW - Read:
-    rst: ''
+    rst: Total read requests with RW mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   RW - Write:
-    rst: ''
+    rst: Total write requests with RW mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   NC - Write:
-    rst: ''
+    rst: Total write requests with NC mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   UC - Write:
-    rst: ''
+    rst: Total write requests with UC mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   CC - Write:
-    rst: ''
+    rst: Total write requests with CC mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   NC - Atomic:
-    rst: ''
+    rst: Total atomic requests with NC mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   UC - Atomic:
-    rst: ''
+    rst: Total atomic requests with UC mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   CC - Atomic:
-    rst: ''
+    rst: Total atomic requests with CC mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   RW - Atomic:
-    rst: ''
-  Req:
-    rst: ''
-  Hit Ratio:
-    rst: ''
-  Hits:
-    rst: ''
-  Translation Misses:
-    rst: ''
-  Permission Misses:
-    rst: ''
+    rst: Total atomic requests with RW mtype from this TCP to all TCCs Sum over TCP
+      instances per normalization unit.
   L2 Cache Hit Rate:
-    rst: ''
+    rst: The percent of total number of requests to the L2 from all clients that hit
+      in the cache. As noted in the Speed-of-Light section, this includes hit-on-miss
+      requests.
 Command processor fetcher (CPF):
   CPF Utilization:
     rst: Percent of total cycles where the CPF was busy actively doing any work. The
@@ -569,23 +684,23 @@ Wavefront launch stats:
     rst: 'The number of architected vector general-purpose registers allocated for
       the kernel, see :ref:`VALU <desc-valu>`. Note: this may not exactly match the
       number of VGPRs requested by the compiler due to allocation granularity.'
-    unit: VGPRs
+    unit: Registers
   AGPRs:
     rst: 'The number of accumulation vector general-purpose registers allocated for
       the kernel, see :ref:`AGPRs <desc-agprs>`. Note: this may not exactly match
       the number of AGPRs requested by the compiler due to allocation granularity.'
-    unit: AGPRs
+    unit: Registers
   SGPRs:
     rst: 'The number of scalar general-purpose registers allocated for the kernel,
       see :ref:`SALU <desc-salu>`. Note: this may not exactly match the number of
       SGPRs requested by the compiler due to allocation granularity.'
-    unit: SGPRs
+    unit: Registers
   LDS Allocation:
     rst: 'The number of bytes of :doc:`LDS <local-data-share>` memory (or, shared
       memory) allocated for this kernel. Note: This may also be larger than what was
       requested at compile time due to both allocation granularity and dynamic per-dispatch
       LDS allocations.'
-    unit: Bytes per workgroup
+    unit: Bytes
   Scratch Allocation:
     rst: The number of bytes of :ref:`scratch memory <memory-spaces>` requested per
       work-item for this kernel. Scratch memory is used for stack memory on the accelerator,
@@ -651,35 +766,35 @@ Overall instruction mix:
       used to execute a wide range of instruction types including floating point operations,
       non-uniform address calculations, transcendental operations, integer operations,
       shifts, conditional evaluation, etc.
-    unit: Instructions
+    unit: Instructions per normalization unit
   VMEM:
     rst: The total number of vector memory operations issued. These include most loads,
       stores and atomic operations and all accesses to :ref:`generic, global, private
       and texture <memory-spaces>` memory.
-    unit: Instructions
+    unit: Instructions per normalization unit
   LDS:
     rst: The total number of LDS (also known as shared memory) operations issued.
       These include loads, stores, atomics, and HIP's ``__shfl`` operations.
-    unit: Instructions
+    unit: Instructions per normalization unit
   MFMA:
     rst: The total number of matrix fused multiply-add instructions issued.
-    unit: Instructions
+    unit: Instructions per normalization unit
   SALU:
     rst: The total number of scalar arithmetic logic unit (SALU) operations issued.
       Typically these are used for address calculations, literal constants, and other
       operations that are provably uniform across a wavefront. Although scalar memory
       (SMEM) operations are issued by the SALU, they are counted separately in this
       section.
-    unit: Instructions
+    unit: Instructions per normalization unit
   SMEM:
     rst: The total number of scalar memory (SMEM) operations issued. These are typically
       used for loading kernel arguments, base-pointers and loads from HIP's ``__constant__``
       memory.
-    unit: Instructions
+    unit: Instructions per normalization unit
   Branch:
     rst: The total number of branch operations issued. These typically consist of
       jump or branch operations and are used to implement control flow.
-    unit: Instructions
+    unit: Instructions per normalization unit
 VALU arithmetic instruction mix:
   INT32:
     rst: The total number of instructions operating on 32-bit integer operands issued
@@ -817,7 +932,7 @@ Compute Speed-of-Light:
       per second. Note: this does not include any 8-bit integer operations from :ref:`VALU
       <desc-valu>` instructions. This is also presented as a percent of the peak theoretical
       INT8 MFMA operations achievable on the specific accelerator.'
-    unit: GFLOPs
+    unit: GIOPs
 Pipeline statistics:
   IPC:
     rst: The ratio of the total number of instructions executed on the :doc:`CU <compute-unit>`
@@ -891,7 +1006,7 @@ Arithmetic operations:
     rst: The total number of integer operations executed on either the :ref:`VALU
       <desc-valu>` or :ref:`MFMA <desc-mfma>` units, per :ref:`normalization unit
       <normalization-units>`.
-    unit: IOP per normalization unit
+    unit: FLOP per normalization unit
   F16 OPs:
     rst: The total number of 16-bit floating-point operations executed on either the
       :ref:`VALU <desc-valu>` or :ref:`MFMA <desc-mfma>` units, per :ref:`normalization
@@ -918,7 +1033,7 @@ Arithmetic operations:
       <desc-valu>` or :ref:`MFMA <desc-mfma>` units, per :ref:`normalization unit
       <normalization-units>`. Note: on current CDNA accelerators, the VALU has no
       native INT8 instructions.'
-    unit: IOP per normalization unit
+    unit: FLOP per normalization unit
 LDS Speed-of-Light:
   Utilization:
     rst: Indicates what percent of the kernel's duration the :ref:`LDS <desc-lds>`
@@ -1262,11 +1377,32 @@ vL1D Speed-of-Light:
       generated per instruction divided by the ideal number of thread-requests per
       instruction.
     unit: Percent
+vL1D cache stall metrics:
+  Stalled on L2 Data:
+    rst: The ratio of the number of cycles where the vL1D is stalled waiting for requested
+      data to return from the L2 cache divided by the number of cycles where the vL1D
+      is active.
+  Stalled on L2 Req:
+    rst: The ratio of the number of cycles where the vL1D is stalled waiting to issue
+      a request for data to the L2 cache divided by the number of cycles where the
+      vL1D is active.
+  Tag RAM Stall (Read):
+    rst: The ratio of the number of cycles where the vL1D is stalled due to Read requests
+      with conflicting tags being looked up concurrently, divided by the number of
+      cycles where the vL1D is active.
+  Tag RAM Stall (Write):
+    rst: The ratio of the number of cycles where the vL1D is stalled due to Write
+      requests with conflicting tags being looked up concurrently, divided by the
+      number of cycles where the vL1D is active.
+  Tag RAM Stall (Atomic):
+    rst: The ratio of the number of cycles where the vL1D is stalled due to Atomic
+      requests with conflicting tags being looked up concurrently, divided by the
+      number of cycles where the vL1D is active.
 vL1D cache access metrics:
   Total Req:
     rst: The total number of incoming requests from the :ref:`address processing unit
       <desc-ta>` after coalescing.
-    unit: Requests
+    unit: Requests per normalization unit
   Read Req:
     rst: The total number of incoming read requests from the :ref:`address processing
       unit <desc-ta>` after coalescing per :ref:`normalization unit <normalization-units>`
@@ -1293,17 +1429,17 @@ vL1D cache access metrics:
     unit: Percent
   Cache Accesses:
     rst: The total number of cache line lookups in the vL1D.
-    unit: Cache lines
+    unit: Requests per normalization unit
   Cache Hits:
     rst: The number of cache accesses minus the number of outgoing requests to the
       :doc:`L2 cache <l2-cache>`, that is, the number of cache line requests serviced
       by the :ref:`vL1D Cache RAM <desc-tc>` per :ref:`normalization unit <normalization-units>`.
-    unit: Cache lines per normalization unit
+    unit: Requests per normalization unit
   Invalidations:
     rst: The number of times the vL1D was issued a write-back invalidate command during
       the kernel's execution per :ref:`normalization unit <normalization-units>`.
       This may be triggered by, for instance, the ``buffer_wbinvl1`` instruction.
-    unit: Invalidations per normalization unit
+    unit: Requests per normalization unit
   L1-L2 BW:
     rst: The number of bytes transferred across the vL1D-L2 interface as a result
       of :ref:`VMEM <desc-vmem>` instructions, divided by total duration. The number
@@ -1325,6 +1461,27 @@ vL1D cache access metrics:
     rst: The number of atomic requests that are sent through the vL1D to the :doc:`L2
       cache <l2-cache>`, per :ref:`normalization unit <normalization-units>`. This
       includes requests for atomics with, and without return.
+    unit: Requests per normalization unit
+L1 Unified Translation Cache (UTCL1):
+  Req:
+    rst: The number of translation requests made to the UTCL1 per normalization unit.
+    unit: Requests per normalization unit
+  Hit Ratio:
+    rst: The ratio of the number of translation requests that hit in the UTCL1 divided
+      by the total number of translation requests made to the UTCL1.
+    unit: Percent
+  Hits:
+    rst: The number of translation requests that hit in the UTCL1, and could be reused,
+      per normalization unit.
+    unit: Requests per normalization unit
+  Translation Misses:
+    rst: The total number of translation requests that missed in the UTCL1 due to
+      translation not being present in the cache, per normalization unit.
+    unit: Requests per normalization unit
+  Permission Misses:
+    rst: The total number of translation requests that missed in the UTCL1 due to
+      a permission error, per normalization unit. This is unused and expected to be
+      zero in most configurations for modern CDNA\u2122 accelerators.
     unit: Requests per normalization unit
 L2 Speed-of-Light:
   Utilization:
