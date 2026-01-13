@@ -54,9 +54,6 @@ post_process();
 
 void set_state(State);
 
-uint32_t
-device_count();
-
 void
 postfork_child_cleanup();
 
@@ -88,12 +85,6 @@ post_process()
 inline void
 set_state(State)
 {}
-
-inline uint32_t
-device_count()
-{
-    return 0;
-}
 
 inline void
 postfork_child_cleanup()
