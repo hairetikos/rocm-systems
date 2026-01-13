@@ -36,7 +36,6 @@
 #include <mutex>
 #include <timemory/units.hpp>
 
-#include <algorithm>
 #include <limits>
 #include <map>
 #include <memory>
@@ -60,18 +59,18 @@ struct track_description
     std::vector<size_t> track_indexes;
 };
 
-const auto GFX_BUSY_VALUE = enabled_metric{ .bits{ .gfx_activity = 1 } }.value;
-const auto UMC_BUSY_VALUE = enabled_metric{ .bits{ .umc_activity = 1 } }.value;
-const auto MM_BUSY_VALUE  = enabled_metric{ .bits{ .mm_activity = 1 } }.value;
+const auto GFX_BUSY_VALUE = enabled_metric{ .gfx_activity = 1 }.value;
+const auto UMC_BUSY_VALUE = enabled_metric{ .umc_activity = 1 }.value;
+const auto MM_BUSY_VALUE  = enabled_metric{ .mm_activity = 1 }.value;
 const auto TEMPERATURE_VALUE =
-    enabled_metric{ .bits{ .hotspot_temperature = 1, .edge_temperature = 1 } }.value;
+    enabled_metric{ .hotspot_temperature = 1, .edge_temperature = 1 }.value;
 const auto CURRENT_POWER_VALUE =
-    enabled_metric{ .bits{ .current_socket_power = 1, .average_socket_power = 1 } }.value;
-const auto MEMORY_USAGE_VALUE  = enabled_metric{ .bits{ .memory_usage = 1 } }.value;
-const auto VCN_ACTIVITY_VALUE  = enabled_metric{ .bits{ .vcn_activity = 1 } }.value;
-const auto JPEG_ACTIVITY_VALUE = enabled_metric{ .bits{ .jpeg_activity = 1 } }.value;
-const auto XGMI_VALUE          = enabled_metric{ .bits{ .xgmi = 1 } }.value;
-const auto PCIE_VALUE          = enabled_metric{ .bits{ .pcie = 1 } }.value;
+    enabled_metric{ .current_socket_power = 1, .average_socket_power = 1 }.value;
+const auto MEMORY_USAGE_VALUE  = enabled_metric{ .memory_usage = 1 }.value;
+const auto VCN_ACTIVITY_VALUE  = enabled_metric{ .vcn_activity = 1 }.value;
+const auto JPEG_ACTIVITY_VALUE = enabled_metric{ .jpeg_activity = 1 }.value;
+const auto XGMI_VALUE          = enabled_metric{ .xgmi = 1 }.value;
+const auto PCIE_VALUE          = enabled_metric{ .pcie = 1 }.value;
 
 inline std::unordered_map<uint32_t, track_description>&
 get_perfetto_tracks()
@@ -136,22 +135,22 @@ get_perfetto_bundle()
 
 struct perfetto_policy
 {
-    static void init_storage(size_t device_index)
+    using counter_track = perfetto_counter_track<smi_metrics>;
+
+    template <typename ProcessorVector>
+    static void init_storage(const ProcessorVector& processors)
     {
-        get_perfetto_bundle().insert(
-            { device_index, std::make_unique<std::vector<perfetto_amd_smi_sample>>() });
+        for(const auto& processor : processors)
+        {
+            get_perfetto_bundle().insert(
+                { processor->get_index(),
+                  std::make_unique<std::vector<perfetto_amd_smi_sample>>() });
+        }
     }
 
     static void setup_counter_tracks(size_t                device_index,
                                      const enabled_metric& enabled_metrics)
     {
-        if(!get_use_perfetto())
-        {
-            return;
-        }
-
-        using counter_track = perfetto_counter_track<smi_metrics>;
-
         auto addendum = [&](const char* name) {
             return JOIN(" ", "GPU", name, JOIN("", '[', device_index, ']'), "(S)");
         };
@@ -208,7 +207,7 @@ struct perfetto_policy
             }
         }
 
-        if(enabled_metrics.bits.xgmi)
+        if(enabled_metrics.xgmi)
         {
             auto& xgmi_tracks = get_xgmi_tracks()[device_index];
 
@@ -226,7 +225,7 @@ struct perfetto_policy
             }
         }
 
-        if(enabled_metrics.bits.pcie)
+        if(enabled_metrics.pcie)
         {
             auto& pcie_tracks = get_pcie_tracks()[device_index];
 
@@ -244,43 +243,45 @@ struct perfetto_policy
     static void store_sample(size_t device_index, const smi_metrics& metrics,
                              unsigned long timestamp)
     {
-        if(get_use_perfetto())
+        get_perfetto_bundle()[device_index]->emplace_back(
+            perfetto_amd_smi_sample{ timestamp, metrics });
+    }
+
+    template <typename ProcessorVector>
+    static void post_process(const ProcessorVector& processors,
+                             enabled_metric         enabled_metrics)
+    {
+        for(const auto& processor : processors)
         {
-            get_perfetto_bundle()[device_index]->emplace_back(
-                perfetto_amd_smi_sample{ timestamp, metrics });
+            post_process_device(processor->get_index(), enabled_metrics,
+                                processor->get_supported_metrics());
         }
     }
 
-    static void post_process(size_t device_index, enabled_metric enabled_metrics,
-                             enabled_metric supported_metrics)
+private:
+    static void post_process_device(size_t device_index, enabled_metric enabled_metrics,
+                                    enabled_metric supported_metrics)
     {
-        if(!get_use_perfetto())
-        {
-            return;
-        }
+        auto& samples = *get_perfetto_bundle()[device_index];
 
-        printf("Post-processing %zu amd-smi samples from device %zu\n",
-               get_perfetto_bundle()[device_index]->size(), device_index);
-
-        using counter_track = perfetto_counter_track<smi_metrics>;
-
-        auto&       samples      = *get_perfetto_bundle()[device_index];
-        const auto& _thread_info = thread_info::get(0, InternalTID);
+        printf("Post-processing %zu amd-smi samples from device %zu\n", samples.size(),
+               device_index);
 
         ROCPROFSYS_VERBOSE(1, "Post-processing %zu amd-smi samples from device %zu\n",
                            samples.size(), device_index);
 
-        if(!_thread_info)
+        const auto& thread_info = thread_info::get(0, InternalTID);
+        if(!thread_info)
         {
             return;
         }
 
-        enabled_metric _enabled_metrics = {
+        enabled_metric effective_metrics = {
             .value =
                 static_cast<uint32_t>(enabled_metrics.value & supported_metrics.value)
         };
 
-        if(_enabled_metrics.value == 0)
+        if(effective_metrics.value == 0)
         {
             ROCPROFSYS_WARNING(0, "No enabled AMD SMI metrics for device %zu\n",
                                device_index);
@@ -289,232 +290,257 @@ struct perfetto_policy
 
         auto& tracks = get_perfetto_tracks();
 
-        for(auto& itr : samples)
+        for(const auto& sample : samples)
         {
-            const auto _ts = itr.timestamp;
+            const auto ts = sample.timestamp;
 
-            if(!_thread_info->is_valid_time(_ts))
+            if(!thread_info->is_valid_time(ts))
             {
-                ROCPROFSYS_WARNING(0, "Invalid timestamp %zu for amd-smi sample\n", _ts);
+                ROCPROFSYS_WARNING(0, "Invalid timestamp %zu for amd-smi sample\n", ts);
                 continue;
             }
 
-            const double _gfxbusy = itr.metrics.gfx_activity;
-            const double _umcbusy = itr.metrics.umc_activity;
-            const double _mmbusy  = itr.metrics.mm_activity;
-            const double _temp    = _enabled_metrics.bits.hotspot_temperature
-                                        ? itr.metrics.hotspot_temperature
-                                        : itr.metrics.edge_temperature;
-            const double _power   = _enabled_metrics.bits.average_socket_power
-                                        ? itr.metrics.average_socket_power
-                                        : itr.metrics.current_socket_power;
-            const double _usage =
-                itr.metrics.memory_usage / static_cast<double>(units::megabyte);
+            process_basic_metrics(device_index, ts, sample.metrics, effective_metrics,
+                                  tracks);
+            process_xcp_activity(device_index, ts, sample.metrics, effective_metrics,
+                                 enabled_metrics, supported_metrics, tracks);
+            process_xgmi_metrics(device_index, ts, sample.metrics, effective_metrics);
+            process_pcie_metrics(device_index, ts, sample.metrics, effective_metrics);
+        }
+    }
 
-            if(_enabled_metrics.bits.gfx_activity &&
-               !tracks.at(GFX_BUSY_VALUE).track_indexes.empty())
-            {
-                const auto track_index = tracks.at(GFX_BUSY_VALUE).track_indexes[0];
-                TRACE_COUNTER("device_busy_gfx",
-                              counter_track::at(device_index, track_index), _ts,
-                              _gfxbusy);
-            }
-            if(_enabled_metrics.bits.umc_activity &&
-               !tracks.at(UMC_BUSY_VALUE).track_indexes.empty())
-            {
-                const auto track_index = tracks.at(UMC_BUSY_VALUE).track_indexes[0];
-                TRACE_COUNTER("device_busy_umc",
-                              counter_track::at(device_index, track_index), _ts,
-                              _umcbusy);
-            }
-            if(_enabled_metrics.bits.mm_activity &&
-               !tracks.at(MM_BUSY_VALUE).track_indexes.empty())
-            {
-                const auto track_index = tracks.at(MM_BUSY_VALUE).track_indexes[0];
-                TRACE_COUNTER("device_busy_mm",
-                              counter_track::at(device_index, track_index), _ts, _mmbusy);
-            }
-            if((_enabled_metrics.bits.edge_temperature ||
-                _enabled_metrics.bits.hotspot_temperature) &&
-               !tracks.at(TEMPERATURE_VALUE).track_indexes.empty())
-            {
-                const auto track_index = tracks.at(TEMPERATURE_VALUE).track_indexes[0];
-                TRACE_COUNTER("device_temp", counter_track::at(device_index, track_index),
-                              _ts, _temp);
-            }
-            if((_enabled_metrics.bits.average_socket_power ||
-                _enabled_metrics.bits.current_socket_power) &&
-               !tracks.at(CURRENT_POWER_VALUE).track_indexes.empty())
-            {
-                const auto track_index = tracks.at(CURRENT_POWER_VALUE).track_indexes[0];
-                TRACE_COUNTER("device_power",
-                              counter_track::at(device_index, track_index), _ts, _power);
-            }
-            if(_enabled_metrics.bits.memory_usage &&
-               !tracks.at(MEMORY_USAGE_VALUE).track_indexes.empty())
-            {
-                const auto track_index = tracks.at(MEMORY_USAGE_VALUE).track_indexes[0];
-                TRACE_COUNTER("device_memory_usage",
-                              counter_track::at(device_index, track_index), _ts, _usage);
-            }
+private:
+    static void process_basic_metrics(
+        size_t device_index, size_t ts, const smi_metrics& metrics,
+        const enabled_metric&                            effective_metrics,
+        std::unordered_map<uint32_t, track_description>& tracks)
+    {
+        if(effective_metrics.gfx_activity &&
+           !tracks.at(GFX_BUSY_VALUE).track_indexes.empty())
+        {
+            TRACE_COUNTER("device_busy_gfx",
+                          counter_track::at(device_index,
+                                            tracks.at(GFX_BUSY_VALUE).track_indexes[0]),
+                          ts, static_cast<double>(metrics.gfx_activity));
+        }
 
-            if(_enabled_metrics.bits.vcn_activity &&
-               !tracks.at(VCN_ACTIVITY_VALUE).track_indexes.empty())
+        if(effective_metrics.umc_activity &&
+           !tracks.at(UMC_BUSY_VALUE).track_indexes.empty())
+        {
+            TRACE_COUNTER("device_busy_umc",
+                          counter_track::at(device_index,
+                                            tracks.at(UMC_BUSY_VALUE).track_indexes[0]),
+                          ts, static_cast<double>(metrics.umc_activity));
+        }
+
+        if(effective_metrics.mm_activity &&
+           !tracks.at(MM_BUSY_VALUE).track_indexes.empty())
+        {
+            TRACE_COUNTER("device_busy_mm",
+                          counter_track::at(device_index,
+                                            tracks.at(MM_BUSY_VALUE).track_indexes[0]),
+                          ts, static_cast<double>(metrics.mm_activity));
+        }
+
+        if((effective_metrics.edge_temperature ||
+            effective_metrics.hotspot_temperature) &&
+           !tracks.at(TEMPERATURE_VALUE).track_indexes.empty())
+        {
+            const double temp = effective_metrics.hotspot_temperature
+                                    ? metrics.hotspot_temperature
+                                    : metrics.edge_temperature;
+            TRACE_COUNTER(
+                "device_temp",
+                counter_track::at(device_index,
+                                  tracks.at(TEMPERATURE_VALUE).track_indexes[0]),
+                ts, temp);
+        }
+
+        if((effective_metrics.average_socket_power ||
+            effective_metrics.current_socket_power) &&
+           !tracks.at(CURRENT_POWER_VALUE).track_indexes.empty())
+        {
+            const double power = effective_metrics.average_socket_power
+                                     ? metrics.average_socket_power
+                                     : metrics.current_socket_power;
+            TRACE_COUNTER(
+                "device_power",
+                counter_track::at(device_index,
+                                  tracks.at(CURRENT_POWER_VALUE).track_indexes[0]),
+                ts, power);
+        }
+
+        if(effective_metrics.memory_usage &&
+           !tracks.at(MEMORY_USAGE_VALUE).track_indexes.empty())
+        {
+            const double usage =
+                metrics.memory_usage / static_cast<double>(units::megabyte);
+            TRACE_COUNTER(
+                "device_memory_usage",
+                counter_track::at(device_index,
+                                  tracks.at(MEMORY_USAGE_VALUE).track_indexes[0]),
+                ts, usage);
+        }
+    }
+
+    static void process_xcp_activity(
+        size_t device_index, size_t ts, const smi_metrics& metrics,
+        const enabled_metric& effective_metrics, const enabled_metric& enabled_metrics,
+        const enabled_metric&                            supported_metrics,
+        std::unordered_map<uint32_t, track_description>& tracks)
+    {
+        if(effective_metrics.vcn_activity &&
+           !tracks.at(VCN_ACTIVITY_VALUE).track_indexes.empty())
+        {
+            size_t engine_id = 0;
+            for(const auto& xcp_stats : metrics.xcp_stats)
             {
-                size_t engine_id = 0;
-                for(const auto& xcp_stats : itr.metrics.xcp_stats)
+                for(const auto& vcn_val : xcp_stats.vcn_busy)
                 {
-                    for(const auto& vcn_val : xcp_stats.vcn_busy)
+                    if(vcn_val != std::numeric_limits<uint16_t>::max() &&
+                       engine_id < tracks.at(VCN_ACTIVITY_VALUE).track_indexes.size())
                     {
-                        if(vcn_val != std::numeric_limits<uint16_t>::max() &&
-                           engine_id < tracks.at(VCN_ACTIVITY_VALUE).track_indexes.size())
-                        {
-                            const auto track_index =
-                                tracks.at(VCN_ACTIVITY_VALUE).track_indexes[engine_id++];
-                            TRACE_COUNTER("device_vcn_activity",
-                                          counter_track::at(device_index, track_index),
-                                          _ts, vcn_val);
-                        }
+                        TRACE_COUNTER(
+                            "device_vcn_activity",
+                            counter_track::at(
+                                device_index,
+                                tracks.at(VCN_ACTIVITY_VALUE).track_indexes[engine_id++]),
+                            ts, vcn_val);
                     }
                 }
             }
+        }
 
-            static std::once_flag once_flag;
-            std::call_once(once_flag, [&]() {
-                printf("JPEG activity: %d, enabled: %d, supported: %d\n",
-                       _enabled_metrics.bits.jpeg_activity,
-                       enabled_metrics.bits.jpeg_activity,
-                       supported_metrics.bits.jpeg_activity);
-            });
+        static std::once_flag once_flag;
+        std::call_once(once_flag, [&]() {
+            printf("JPEG activity: %d, enabled: %d, supported: %d\n",
+                   effective_metrics.jpeg_activity, enabled_metrics.jpeg_activity,
+                   supported_metrics.jpeg_activity);
+        });
 
-            if(_enabled_metrics.bits.jpeg_activity &&
-               !tracks.at(JPEG_ACTIVITY_VALUE).track_indexes.empty())
+        if(effective_metrics.jpeg_activity &&
+           !tracks.at(JPEG_ACTIVITY_VALUE).track_indexes.empty())
+        {
+            size_t engine_id = 0;
+            for(const auto& xcp_stats : metrics.xcp_stats)
             {
-                size_t engine_id = 0;
-                for(const auto& xcp_stats : itr.metrics.xcp_stats)
+                for(const auto& jpeg_val : xcp_stats.jpeg_busy)
                 {
-                    for(const auto& jpeg_val : xcp_stats.jpeg_busy)
+                    if(jpeg_val != std::numeric_limits<uint16_t>::max() &&
+                       engine_id < tracks.at(JPEG_ACTIVITY_VALUE).track_indexes.size())
                     {
-                        if(jpeg_val != std::numeric_limits<uint16_t>::max() &&
-                           engine_id <
-                               tracks.at(JPEG_ACTIVITY_VALUE).track_indexes.size())
-                        {
-                            const auto track_index =
-                                tracks.at(JPEG_ACTIVITY_VALUE).track_indexes[engine_id++];
-                            TRACE_COUNTER("device_jpeg_activity",
-                                          counter_track::at(device_index, track_index),
-                                          _ts, jpeg_val);
-                        }
+                        TRACE_COUNTER("device_jpeg_activity",
+                                      counter_track::at(device_index,
+                                                        tracks.at(JPEG_ACTIVITY_VALUE)
+                                                            .track_indexes[engine_id++]),
+                                      ts, jpeg_val);
                     }
                 }
             }
+        }
+    }
 
-            if(_enabled_metrics.bits.xgmi)
+    static void process_xgmi_metrics(size_t device_index, size_t ts,
+                                     const smi_metrics&    metrics,
+                                     const enabled_metric& effective_metrics)
+    {
+        if(!effective_metrics.xgmi)
+        {
+            return;
+        }
+
+        auto xgmi_it = get_xgmi_tracks().find(device_index);
+        if(xgmi_it == get_xgmi_tracks().end())
+        {
+            return;
+        }
+
+        const auto& xgmi_tracks = xgmi_it->second;
+
+        if(!xgmi_tracks.link_width.empty() && metrics.xgmi.link.width != 0)
+        {
+            TRACE_COUNTER("device_xgmi_link_width",
+                          counter_track::at(device_index, xgmi_tracks.link_width[0]), ts,
+                          static_cast<double>(metrics.xgmi.link.width));
+        }
+
+        if(!xgmi_tracks.link_speed.empty() && metrics.xgmi.link.speed != 0)
+        {
+            TRACE_COUNTER("device_xgmi_link_speed",
+                          counter_track::at(device_index, xgmi_tracks.link_speed[0]), ts,
+                          static_cast<double>(metrics.xgmi.link.speed));
+        }
+
+        for(size_t link = 0;
+            link < AMDSMI_MAX_NUM_XGMI_LINKS && link < xgmi_tracks.read_data.size();
+            ++link)
+        {
+            if(metrics.xgmi.data_acc.read[link] != 0)
             {
-                auto xgmi_it = get_xgmi_tracks().find(device_index);
-                if(xgmi_it != get_xgmi_tracks().end())
-                {
-                    const auto& xgmi_tracks = xgmi_it->second;
-
-                    if(!xgmi_tracks.link_width.empty() &&
-                       itr.metrics.xgmi_info.link.width != 0)
-                    {
-                        TRACE_COUNTER(
-                            "device_xgmi_link_width",
-                            counter_track::at(device_index, xgmi_tracks.link_width[0]),
-                            _ts, static_cast<double>(itr.metrics.xgmi_info.link.width));
-                    }
-
-                    if(!xgmi_tracks.link_speed.empty() &&
-                       itr.metrics.xgmi_info.link.speed != 0)
-                    {
-                        TRACE_COUNTER(
-                            "device_xgmi_link_speed",
-                            counter_track::at(device_index, xgmi_tracks.link_speed[0]),
-                            _ts, static_cast<double>(itr.metrics.xgmi_info.link.speed));
-                    }
-
-                    for(size_t link = 0; link < AMDSMI_MAX_NUM_XGMI_LINKS &&
-                                         link < xgmi_tracks.read_data.size();
-                        ++link)
-                    {
-                        if(itr.metrics.xgmi_info.data_acc.read[link] != 0)
-                        {
-                            TRACE_COUNTER(
-                                "device_xgmi_read_data",
-                                counter_track::at(device_index,
-                                                  xgmi_tracks.read_data[link]),
-                                _ts,
-                                static_cast<double>(
-                                    itr.metrics.xgmi_info.data_acc.read[link]));
-                        }
-                    }
-
-                    for(size_t link = 0; link < AMDSMI_MAX_NUM_XGMI_LINKS &&
-                                         link < xgmi_tracks.write_data.size();
-                        ++link)
-                    {
-                        if(itr.metrics.xgmi_info.data_acc.write[link] != 0)
-                        {
-                            TRACE_COUNTER(
-                                "device_xgmi_write_data",
-                                counter_track::at(device_index,
-                                                  xgmi_tracks.write_data[link]),
-                                _ts,
-                                static_cast<double>(
-                                    itr.metrics.xgmi_info.data_acc.write[link]));
-                        }
-                    }
-                }
+                TRACE_COUNTER(
+                    "device_xgmi_read_data",
+                    counter_track::at(device_index, xgmi_tracks.read_data[link]), ts,
+                    static_cast<double>(metrics.xgmi.data_acc.read[link]));
             }
+        }
 
-            if(_enabled_metrics.bits.pcie)
+        for(size_t link = 0;
+            link < AMDSMI_MAX_NUM_XGMI_LINKS && link < xgmi_tracks.write_data.size();
+            ++link)
+        {
+            if(metrics.xgmi.data_acc.write[link] != 0)
             {
-                auto pcie_it = get_pcie_tracks().find(device_index);
-                if(pcie_it != get_pcie_tracks().end())
-                {
-                    const auto& pcie_tracks = pcie_it->second;
-
-                    if(!pcie_tracks.link_width.empty() &&
-                       itr.metrics.pcie_info.link.width != 0)
-                    {
-                        TRACE_COUNTER(
-                            "device_pcie_link_width",
-                            counter_track::at(device_index, pcie_tracks.link_width[0]),
-                            _ts, static_cast<double>(itr.metrics.pcie_info.link.width));
-                    }
-
-                    if(!pcie_tracks.link_speed.empty() &&
-                       itr.metrics.pcie_info.link.speed != 0)
-                    {
-                        TRACE_COUNTER(
-                            "device_pcie_link_speed",
-                            counter_track::at(device_index, pcie_tracks.link_speed[0]),
-                            _ts, static_cast<double>(itr.metrics.pcie_info.link.speed));
-                    }
-
-                    if(!pcie_tracks.bandwidth_acc.empty() &&
-                       itr.metrics.pcie_info.bandwidth.acc != 0)
-                    {
-                        TRACE_COUNTER(
-                            "device_pcie_bandwidth_acc",
-                            counter_track::at(device_index, pcie_tracks.bandwidth_acc[0]),
-                            _ts,
-                            static_cast<double>(itr.metrics.pcie_info.bandwidth.acc));
-                    }
-
-                    if(!pcie_tracks.bandwidth_inst.empty() &&
-                       itr.metrics.pcie_info.bandwidth.inst != 0)
-                    {
-                        TRACE_COUNTER(
-                            "device_pcie_bandwidth_inst",
-                            counter_track::at(device_index,
-                                              pcie_tracks.bandwidth_inst[0]),
-                            _ts,
-                            static_cast<double>(itr.metrics.pcie_info.bandwidth.inst));
-                    }
-                }
+                TRACE_COUNTER(
+                    "device_xgmi_write_data",
+                    counter_track::at(device_index, xgmi_tracks.write_data[link]), ts,
+                    static_cast<double>(metrics.xgmi.data_acc.write[link]));
             }
+        }
+    }
+
+    static void process_pcie_metrics(size_t device_index, size_t ts,
+                                     const smi_metrics&    metrics,
+                                     const enabled_metric& effective_metrics)
+    {
+        if(!effective_metrics.pcie)
+        {
+            return;
+        }
+
+        auto pcie_it = get_pcie_tracks().find(device_index);
+        if(pcie_it == get_pcie_tracks().end())
+        {
+            return;
+        }
+
+        const auto& pcie_tracks = pcie_it->second;
+
+        if(!pcie_tracks.link_width.empty() && metrics.pcie.link.width != 0)
+        {
+            TRACE_COUNTER("device_pcie_link_width",
+                          counter_track::at(device_index, pcie_tracks.link_width[0]), ts,
+                          static_cast<double>(metrics.pcie.link.width));
+        }
+
+        if(!pcie_tracks.link_speed.empty() && metrics.pcie.link.speed != 0)
+        {
+            TRACE_COUNTER("device_pcie_link_speed",
+                          counter_track::at(device_index, pcie_tracks.link_speed[0]), ts,
+                          static_cast<double>(metrics.pcie.link.speed));
+        }
+
+        if(!pcie_tracks.bandwidth_acc.empty() && metrics.pcie.bandwidth.acc != 0)
+        {
+            TRACE_COUNTER("device_pcie_bandwidth_acc",
+                          counter_track::at(device_index, pcie_tracks.bandwidth_acc[0]),
+                          ts, static_cast<double>(metrics.pcie.bandwidth.acc));
+        }
+
+        if(!pcie_tracks.bandwidth_inst.empty() && metrics.pcie.bandwidth.inst != 0)
+        {
+            TRACE_COUNTER("device_pcie_bandwidth_inst",
+                          counter_track::at(device_index, pcie_tracks.bandwidth_inst[0]),
+                          ts, static_cast<double>(metrics.pcie.bandwidth.inst));
         }
     }
 };

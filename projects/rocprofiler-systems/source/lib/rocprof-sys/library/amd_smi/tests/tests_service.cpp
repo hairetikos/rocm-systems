@@ -200,6 +200,109 @@ TEST_F(service_test, processor_types_are_set_correctly)
     EXPECT_EQ(processors[1]->get_processor_type(), AMDSMI_PROCESSOR_TYPE_AMD_CPU);
 }
 
+TEST_F(service_test, get_processors_skips_unsupported_processors)
+{
+    set_up_processors(3);
+
+    ON_CALL(*m_mock_driver, get_metrics_info(_, _))
+        .WillByDefault([](amdsmi_processor_handle handle, amdsmi_gpu_metrics_t* metrics) {
+            auto addr = reinterpret_cast<uintptr_t>(handle);
+            std::memset(metrics, 0xFF, sizeof(amdsmi_gpu_metrics_t));
+
+            if(addr == 0x1000 || addr == 0x1002)
+            {
+                metrics->average_gfx_activity = 50;
+            }
+            return AMDSMI_STATUS_SUCCESS;
+        });
+
+    ON_CALL(*m_mock_driver, get_memory_usage(_, _, _))
+        .WillByDefault(Return(AMDSMI_STATUS_NOT_SUPPORTED));
+
+    service<mock_driver_factory> svc;
+
+    auto processors = svc.get_processors();
+    EXPECT_EQ(processors.size(), 2u);
+    EXPECT_EQ(processors[0]->get_index(), 0u);
+    EXPECT_EQ(processors[1]->get_index(), 2u);
+}
+
+TEST_F(service_test, get_processors_returns_empty_when_all_unsupported)
+{
+    set_up_processors(2);
+
+    ON_CALL(*m_mock_driver, get_metrics_info(_, _))
+        .WillByDefault([](amdsmi_processor_handle, amdsmi_gpu_metrics_t* metrics) {
+            std::memset(metrics, 0xFF, sizeof(amdsmi_gpu_metrics_t));
+            return AMDSMI_STATUS_SUCCESS;
+        });
+
+    ON_CALL(*m_mock_driver, get_memory_usage(_, _, _))
+        .WillByDefault(Return(AMDSMI_STATUS_NOT_SUPPORTED));
+
+    service<mock_driver_factory> svc;
+
+    auto processors = svc.get_processors();
+    EXPECT_TRUE(processors.empty());
+}
+
+TEST_F(service_test, get_processors_with_multiple_sockets)
+{
+    ON_CALL(*m_mock_driver, get_socket_handles(_, _))
+        .WillByDefault([](uint32_t* count, amdsmi_socket_handle* handles) {
+            *count = 2;
+            if(handles != nullptr)
+            {
+                handles[0] = reinterpret_cast<amdsmi_socket_handle>(0x100);
+                handles[1] = reinterpret_cast<amdsmi_socket_handle>(0x200);
+            }
+            return AMDSMI_STATUS_SUCCESS;
+        });
+
+    ON_CALL(*m_mock_driver, get_processor_handles(_, _, _))
+        .WillByDefault(
+            [](amdsmi_socket_handle socket, uint32_t* count, amdsmi_processor_handle* h) {
+                auto socket_addr = reinterpret_cast<uintptr_t>(socket);
+                if(socket_addr == 0x100)
+                {
+                    *count = 2;
+                    if(h != nullptr)
+                    {
+                        h[0] = reinterpret_cast<amdsmi_processor_handle>(0x1000);
+                        h[1] = reinterpret_cast<amdsmi_processor_handle>(0x1001);
+                    }
+                }
+                else
+                {
+                    *count = 1;
+                    if(h != nullptr)
+                    {
+                        h[0] = reinterpret_cast<amdsmi_processor_handle>(0x2000);
+                    }
+                }
+                return AMDSMI_STATUS_SUCCESS;
+            });
+
+    ON_CALL(*m_mock_driver, get_processor_type(_, _))
+        .WillByDefault(DoAll(SetArgPointee<1>(AMDSMI_PROCESSOR_TYPE_AMD_GPU),
+                             Return(AMDSMI_STATUS_SUCCESS)));
+
+    amdsmi_gpu_metrics_t valid_metrics{};
+    valid_metrics.average_gfx_activity = 50;
+
+    ON_CALL(*m_mock_driver, get_metrics_info(_, _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(valid_metrics), Return(AMDSMI_STATUS_SUCCESS)));
+
+    service<mock_driver_factory> svc;
+
+    auto processors = svc.get_processors();
+    EXPECT_EQ(processors.size(), 3u);
+    EXPECT_EQ(processors[0]->get_index(), 0u);
+    EXPECT_EQ(processors[1]->get_index(), 1u);
+    EXPECT_EQ(processors[2]->get_index(), 2u);
+}
+
 }  // namespace testing
 }  // namespace amd_smi
 }  // namespace rocprofsys

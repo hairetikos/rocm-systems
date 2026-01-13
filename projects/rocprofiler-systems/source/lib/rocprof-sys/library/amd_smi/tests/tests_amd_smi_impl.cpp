@@ -26,17 +26,26 @@ struct mock_settings_policy
 {
     static device_filter  s_device_filter;
     static enabled_metric s_enabled_metrics;
+    static bool           s_use_perfetto_legacy_metrics;
+
     static device_filter  get_device_filter() { return s_device_filter; }
     static enabled_metric get_enabled_metrics() { return s_enabled_metrics; }
-    static void           reset()
+    static bool           get_use_perfetto_legacy_metrics()
     {
-        s_device_filter   = { device_selection_mode::ALL, {} };
-        s_enabled_metrics = { .value = 0xFFFF };
+        return s_use_perfetto_legacy_metrics;
+    }
+
+    static void reset()
+    {
+        s_device_filter               = { device_selection_mode::ALL, {} };
+        s_enabled_metrics             = { .value = 0xFFFF };
+        s_use_perfetto_legacy_metrics = true;
     }
 };
 
 device_filter  mock_settings_policy::s_device_filter = { device_selection_mode::ALL, {} };
-enabled_metric mock_settings_policy::s_enabled_metrics = { .value = 0xFFFF };
+enabled_metric mock_settings_policy::s_enabled_metrics             = { .value = 0xFFFF };
+bool           mock_settings_policy::s_use_perfetto_legacy_metrics = true;
 
 struct mock_perfetto_policy
 {
@@ -44,25 +53,30 @@ struct mock_perfetto_policy
     static std::vector<std::pair<size_t, uint64_t>> s_stored_samples;
     static bool                                     s_post_processed;
 
-    static void init_storage(size_t device_index)
+    template <typename ProcessorVector>
+    static void init_storage(const ProcessorVector& processors)
     {
-        s_initialized_devices.push_back(device_index);
+        for(const auto& processor : processors)
+        {
+            s_initialized_devices.push_back(processor->get_index());
+        }
     }
 
-    static void setup_counter_tracks(size_t /*device_index*/,
-                                     const enabled_metric& /*enabled_metrics*/)
+    static void setup_counter_tracks(
+        [[maybe_unused]] size_t                device_index,
+        [[maybe_unused]] const enabled_metric& enabled_metrics)
     {}
 
-    static void store_sample(size_t device_index,
-                             const smi_metrics&
-                             /*metrics*/,
-                             unsigned long timestamp)
+    static void store_sample(size_t                              device_index,
+                             [[maybe_unused]] const smi_metrics& metrics,
+                             unsigned long                       timestamp)
     {
         s_stored_samples.emplace_back(device_index, timestamp);
     }
 
-    static void post_process(size_t /*device_index*/, enabled_metric /*enabled_metrics*/,
-                             enabled_metric /*supported_metrics*/)
+    template <typename ProcessorVector>
+    static void post_process([[maybe_unused]] const ProcessorVector& processors,
+                             [[maybe_unused]] enabled_metric         enabled_metrics)
     {
         s_post_processed = true;
     }
@@ -86,18 +100,19 @@ struct mock_rocpd_policy
     static bool s_pmc_initialized;
 
     static void initialize_category_metadata() { s_category_initialized = true; }
-    static void initialize_smi_tracks_metadata(size_t /*gpu_id*/)
+    static void initialize_smi_tracks_metadata([[maybe_unused]] size_t gpu_id)
     {
         s_tracks_initialized = true;
     }
-    static void initialize_smi_pmc_metadata(size_t /*gpu_id*/)
+    static void initialize_smi_pmc_metadata([[maybe_unused]] size_t gpu_id)
     {
         s_pmc_initialized = true;
     }
-    static void store_sample(size_t /*device_id*/, const enabled_metric& /*supported*/,
-                             const enabled_metric& /*enabled*/,
-                             const smi_metrics& /*metrics*/, unsigned long
-                             /*timestamp*/)
+    static void store_sample([[maybe_unused]] size_t                device_id,
+                             [[maybe_unused]] const enabled_metric& supported,
+                             [[maybe_unused]] const enabled_metric& enabled,
+                             [[maybe_unused]] const smi_metrics&    metrics,
+                             [[maybe_unused]] unsigned long         timestamp)
     {}
 
     static void reset()
@@ -307,6 +322,182 @@ TEST_F(AmdSmiImplTest, DeviceFilterSpecificReturnsSelectedProcessors)
     const auto& processors = impl.get_processors();
     EXPECT_EQ(processors[0]->get_index(), 0u);
     EXPECT_EQ(processors[1]->get_index(), 2u);
+}
+
+TEST_F(AmdSmiImplTest, SetupSkipsPerfettoWhenLegacyMetricsDisabled)
+{
+    auto proc = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x1),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
+    mock_service::add_processor(proc);
+
+    mock_settings_policy::s_use_perfetto_legacy_metrics = false;
+
+    amd_smi_impl<test_config> impl;
+    impl.setup();
+
+    EXPECT_EQ(impl.get_processor_count(), 1u);
+    EXPECT_TRUE(mock_perfetto_policy::s_initialized_devices.empty());
+}
+
+TEST_F(AmdSmiImplTest, ConfigSkipsPerfettoSetupWhenLegacyMetricsDisabled)
+{
+    auto proc = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x1),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
+    mock_service::add_processor(proc);
+
+    mock_settings_policy::s_use_perfetto_legacy_metrics = false;
+
+    amd_smi_impl<test_config> impl;
+    impl.setup();
+    impl.config();
+
+    EXPECT_TRUE(mock_rocpd_policy::s_category_initialized);
+    EXPECT_TRUE(mock_rocpd_policy::s_tracks_initialized);
+    EXPECT_TRUE(mock_rocpd_policy::s_pmc_initialized);
+}
+
+TEST_F(AmdSmiImplTest, SampleSkipsPerfettoWhenLegacyMetricsDisabled)
+{
+    auto proc = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x1),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
+    mock_service::add_processor(proc);
+
+    mock_settings_policy::s_use_perfetto_legacy_metrics = false;
+
+    amd_smi_impl<test_config> impl;
+    impl.setup();
+
+    uint64_t test_timestamp = 1000000;
+    impl.sample([test_timestamp]() { return test_timestamp; });
+
+    EXPECT_TRUE(mock_perfetto_policy::s_stored_samples.empty());
+}
+
+TEST_F(AmdSmiImplTest, PostProcessSkipsPerfettoWhenLegacyMetricsDisabled)
+{
+    auto proc = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x1),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
+    mock_service::add_processor(proc);
+
+    mock_settings_policy::s_use_perfetto_legacy_metrics = false;
+
+    amd_smi_impl<test_config> impl;
+    impl.setup();
+    impl.post_process();
+
+    EXPECT_FALSE(mock_perfetto_policy::s_post_processed);
+}
+
+TEST_F(AmdSmiImplTest, ShutdownCleansUpService)
+{
+    auto proc = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x1),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
+    mock_service::add_processor(proc);
+
+    amd_smi_impl<test_config> impl;
+    impl.setup();
+
+    EXPECT_EQ(impl.get_processor_count(), 1u);
+
+    impl.shutdown();
+}
+
+TEST_F(AmdSmiImplTest, GetProcessorsReturnsCorrectList)
+{
+    auto proc0 = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x1),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
+    auto proc1 = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x2),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 1);
+
+    mock_service::add_processor(proc0);
+    mock_service::add_processor(proc1);
+
+    amd_smi_impl<test_config> impl;
+    impl.setup();
+
+    const auto& processors = impl.get_processors();
+    EXPECT_EQ(processors.size(), 2u);
+    EXPECT_EQ(processors[0]->get_index(), 0u);
+    EXPECT_EQ(processors[1]->get_index(), 1u);
+}
+
+TEST_F(AmdSmiImplTest, DeviceFilterAllReturnsAllProcessors)
+{
+    auto proc0 = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x1),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
+    auto proc1 = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x2),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 1);
+    auto proc2 = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x3),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 2);
+
+    mock_service::add_processor(proc0);
+    mock_service::add_processor(proc1);
+    mock_service::add_processor(proc2);
+
+    mock_settings_policy::s_device_filter = { device_selection_mode::ALL, {} };
+
+    amd_smi_impl<test_config> impl;
+    impl.setup();
+
+    EXPECT_EQ(impl.get_processor_count(), 3u);
+}
+
+TEST_F(AmdSmiImplTest, SampleWithMultipleProcessors)
+{
+    auto proc0 = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x1),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
+    auto proc1 = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x2),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 1);
+
+    mock_service::add_processor(proc0);
+    mock_service::add_processor(proc1);
+
+    amd_smi_impl<test_config> impl;
+    impl.setup();
+
+    uint64_t test_timestamp = 1000000;
+    impl.sample([test_timestamp]() { return test_timestamp; });
+
+    EXPECT_EQ(mock_perfetto_policy::s_stored_samples.size(), 2u);
+    EXPECT_EQ(mock_perfetto_policy::s_stored_samples[0].first, 0u);
+    EXPECT_EQ(mock_perfetto_policy::s_stored_samples[1].first, 1u);
+}
+
+TEST_F(AmdSmiImplTest, SetupInitializesPerfettoStorageForAllProcessors)
+{
+    auto proc0 = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x1),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
+    auto proc1 = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x2),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 1);
+    auto proc2 = std::make_shared<processor<mock_driver>>(
+        m_mock_driver, reinterpret_cast<amdsmi_processor_handle>(0x3),
+        AMDSMI_PROCESSOR_TYPE_AMD_GPU, 2);
+
+    mock_service::add_processor(proc0);
+    mock_service::add_processor(proc1);
+    mock_service::add_processor(proc2);
+
+    amd_smi_impl<test_config> impl;
+    impl.setup();
+
+    EXPECT_EQ(mock_perfetto_policy::s_initialized_devices.size(), 3u);
+    EXPECT_EQ(mock_perfetto_policy::s_initialized_devices[0], 0u);
+    EXPECT_EQ(mock_perfetto_policy::s_initialized_devices[1], 1u);
+    EXPECT_EQ(mock_perfetto_policy::s_initialized_devices[2], 2u);
 }
 
 }  // namespace testing

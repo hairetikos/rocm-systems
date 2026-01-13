@@ -345,7 +345,7 @@ rocpd_processor_t::handle(const amd_smi_sample& _amd_smi)
     };
 
     const auto& m       = _amd_smi.metrics;
-    const auto& enabled = _amd_smi.enabled_metric.bits;
+    const auto& enabled = _amd_smi.enabled_metric;
 
     auto insert_scalar = [&](const char* name, const std::string& track, bool is_enabled,
                              double value) {
@@ -411,20 +411,38 @@ rocpd_processor_t::handle(const amd_smi_sample& _amd_smi)
     insert_scalar(trait::name<category::amd_smi_pcie_link_width>::value,
                   info::annotate_with_device_id<category::amd_smi_pcie_link_width>(
                       _amd_smi.device_id),
-                  enabled.pcie, m.pcie_info.link.width);
+                  enabled.pcie, m.pcie.link.width);
     insert_scalar(trait::name<category::amd_smi_pcie_link_speed>::value,
                   info::annotate_with_device_id<category::amd_smi_pcie_link_speed>(
                       _amd_smi.device_id),
-                  enabled.pcie, m.pcie_info.link.speed);
+                  enabled.pcie, m.pcie.link.speed);
     insert_scalar(trait::name<category::amd_smi_pcie_bandwidth_acc>::value,
                   info::annotate_with_device_id<category::amd_smi_pcie_bandwidth_acc>(
                       _amd_smi.device_id),
-                  enabled.pcie, m.pcie_info.bandwidth.acc);
+                  enabled.pcie, m.pcie.bandwidth.acc);
     insert_scalar(trait::name<category::amd_smi_pcie_bandwidth_inst>::value,
                   info::annotate_with_device_id<category::amd_smi_pcie_bandwidth_inst>(
                       _amd_smi.device_id),
-                  enabled.pcie, m.pcie_info.bandwidth.inst);
-
+                  enabled.pcie, m.pcie.bandwidth.inst);
+/*
+    //TODO: XGMI metrics
+    insert_scalar(trait::name<category::amd_smi_xgmi_link_width>::value,
+                  info::annotate_with_device_id<category::amd_smi_xgmi_link_width>(
+                      _amd_smi.device_id),
+                  enabled.xgmi, m.xgmi.link.width);
+    insert_scalar(trait::name<category::amd_smi_xgmi_link_speed>::value,
+                  info::annotate_with_device_id<category::amd_smi_xgmi_link_speed>(
+                      _amd_smi.device_id),
+                  enabled.xgmi, m.xgmi.link.speed);
+    insert_scalar(trait::name<category::amd_smi_xgmi_read_data_acc>::value,
+                  info::annotate_with_device_id<category::amd_smi_xgmi_read_data_acc>(
+                      _amd_smi.device_id),
+                  enabled.xgmi, m.xgmi.data_acc.read);
+    insert_scalar(trait::name<category::amd_smi_xgmi_write_data_acc>::value,
+                  info::annotate_with_device_id<category::amd_smi_xgmi_write_data_acc>(
+                      _amd_smi.device_id),
+                  enabled.xgmi, m.xgmi.data_acc.write);
+*/
 #endif
 }
 

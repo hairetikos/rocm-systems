@@ -77,6 +77,13 @@ struct settings_policy
         return _enabled_metrics;
     }
 
+    static bool get_use_perfetto_legacy_metrics()
+    {
+        // For now, we will use get_use_perfetto() to determine if we should use perfetto
+        // metrics to remain compatible with the legacy system.
+        return get_use_perfetto();
+    }
+
 private:
     static enabled_metric parse_enabled_metrics(const std::string& input)
     {
@@ -117,19 +124,18 @@ private:
         // Map metric names to bitfield values
         const std::unordered_map<std::string, uint16_t> mapper{
             { "temp",
-              (enabled_metric{ .bits{ .hotspot_temperature = 1, .edge_temperature = 1 } })
+              (enabled_metric{ .hotspot_temperature = 1, .edge_temperature = 1 }).value },
+            { "power",
+              (enabled_metric{ .current_socket_power = 1, .average_socket_power = 1 })
                   .value },
-            { "power", (enabled_metric{ .bits{ .current_socket_power = 1,
-                                               .average_socket_power = 1 } })
-                           .value },
-            { "busy", (enabled_metric{ .bits{
-                           .gfx_activity = 1, .umc_activity = 1, .mm_activity = 1 } })
-                          .value },
-            { "mem_usage", (enabled_metric{ .bits{ .memory_usage = 1 } }).value },
-            { "vcn_activity", (enabled_metric{ .bits{ .vcn_activity = 1 } }).value },
-            { "jpeg_activity", (enabled_metric{ .bits{ .jpeg_activity = 1 } }).value },
-            { "xgmi", (enabled_metric{ .bits{ .xgmi = 1 } }).value },
-            { "pcie", (enabled_metric{ .bits{ .pcie = 1 } }).value },
+            { "busy",
+              (enabled_metric{ .gfx_activity = 1, .umc_activity = 1, .mm_activity = 1 })
+                  .value },
+            { "mem_usage", (enabled_metric{ .memory_usage = 1 }).value },
+            { "vcn_activity", (enabled_metric{ .vcn_activity = 1 }).value },
+            { "jpeg_activity", (enabled_metric{ .jpeg_activity = 1 }).value },
+            { "xgmi", (enabled_metric{ .xgmi = 1 }).value },
+            { "pcie", (enabled_metric{ .pcie = 1 }).value },
         };
 
         enabled_metric       metrics{ .value = DISABLE_ALL_METRICS };

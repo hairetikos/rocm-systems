@@ -93,9 +93,9 @@ struct amd_smi_impl
         printf("Enabled %zu GPU processors for AMD SMI sampling\n",
                m_gpu_processors.size());
 
-        for(const auto& processor : m_gpu_processors)
+        if(SettingsApi::get_use_perfetto_legacy_metrics())
         {
-            PerfettoApi::init_storage(processor->get_index());
+            PerfettoApi::init_storage(m_gpu_processors);
         }
     }
 
@@ -106,7 +106,10 @@ struct amd_smi_impl
         for(const auto& device : m_gpu_processors)
         {
             auto device_index = device->get_index();
-            PerfettoApi::setup_counter_tracks(device_index, m_enabled_metrics);
+            if(SettingsApi::get_use_perfetto_legacy_metrics())
+            {
+                PerfettoApi::setup_counter_tracks(device_index, m_enabled_metrics);
+            }
             CacheApi::initialize_smi_tracks_metadata(device_index);
             CacheApi::initialize_smi_pmc_metadata(device_index);
         }
@@ -129,8 +132,10 @@ struct amd_smi_impl
 
                 CacheApi::store_sample(_device_id, _supported_metrics, m_enabled_metrics,
                                        _smi_metrics, _timestamp);
-                PerfettoApi::store_sample(_device_id, _smi_metrics, _timestamp);
-                ++it;
+                if(SettingsApi::get_use_perfetto_legacy_metrics())
+                {
+                    PerfettoApi::store_sample(_device_id, _smi_metrics, _timestamp);
+                }
             } catch(const std::runtime_error& e)
             {
                 ROCPROFSYS_WARNING(
@@ -138,18 +143,15 @@ struct amd_smi_impl
                     "Reading metrics failed for device with ID %zu. Error: %s. "
                     "Disabling device!\n",
                     processor->get_index(), e.what());
-                it = m_gpu_processors.erase(it);
             }
         }
     }
 
     void post_process()
     {
-        printf("Post-processing amd-smi. Num processors: %zu\n", m_gpu_processors.size());
-        for(const auto& processor : m_gpu_processors)
+        if(SettingsApi::get_use_perfetto_legacy_metrics())
         {
-            PerfettoApi::post_process(processor->get_index(), m_enabled_metrics,
-                                      processor->get_supported_metrics());
+            PerfettoApi::post_process(m_gpu_processors, m_enabled_metrics);
         }
     }
 

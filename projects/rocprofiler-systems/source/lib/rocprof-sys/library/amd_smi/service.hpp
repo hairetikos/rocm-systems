@@ -28,6 +28,7 @@
 
 #pragma once
 
+#include "core/debug.hpp"
 #include "library/amd_smi/common.hpp"
 #include "library/amd_smi/processor.hpp"
 
@@ -106,8 +107,18 @@ public:
                     m_driver_api->get_processor_type(processor_handle, &processor_type),
                     "Failed to get processor type!");
 
-                processors.emplace_back(std::make_shared<processor_t>(
-                    m_driver_api, processor_handle, processor_type, index++));
+                auto proc = std::make_shared<processor_t>(m_driver_api, processor_handle,
+                                                          processor_type, index++);
+                if(proc->is_supported())
+                {
+                    processors.emplace_back(std::move(proc));
+                }
+                else
+                {
+                    // TODO: Add a warning to the logger. This is a temporary to avoid
+                    // hangs with unit tests.
+                    printf("Processor %zu is not supported. Skipping.", index);
+                }
             }
         }
 
