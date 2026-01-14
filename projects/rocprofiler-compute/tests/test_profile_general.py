@@ -2832,7 +2832,6 @@ def test_iteration_multiplexing_all_counter_accuracy(
         [counters_kernel, counters_kernel_launch_params], counters_no_multiplexing
     )
 
-@pytest.mark.torch_ops
 def test_torch_operators_profile(binary_handler_profile_rocprof_compute):
     """
     Test profiling a PyTorch application with --torch-operators option.
