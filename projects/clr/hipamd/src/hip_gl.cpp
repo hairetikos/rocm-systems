@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2026 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -663,6 +663,16 @@ hipError_t hipGraphicsMapResources(int count, hipGraphicsResource_t* resources,
     HIP_RETURN(err);
   }
 
+  const auto it = amdContext->devices().cbegin();
+  amd::Device* curDev = *it;
+
+  for (auto& mobj : memObjects) {
+    device::Memory* mem = reinterpret_cast<device::Memory*>(mobj->getDeviceMemory(*curDev));
+    if (amd::MemObjMap::FindMemObj(reinterpret_cast<void*>(mem->virtualAddress()))) {
+      HIP_RETURN(hipErrorAlreadyMapped);
+    }
+  }
+
   amd::Command::EventWaitList nullWaitList;
 
   //! Now create command and enqueue
@@ -685,8 +695,6 @@ hipError_t hipGraphicsMapResources(int count, hipGraphicsResource_t* resources,
     command->release();
   }
 
-  const auto it = amdContext->devices().cbegin();
-  amd::Device* curDev = *it;
   for (auto& mobj : memObjects) {
     device::Memory* mem = reinterpret_cast<device::Memory*>(mobj->getDeviceMemory(*curDev));
     amd::MemObjMap::AddMemObj(reinterpret_cast<void*>(mem->virtualAddress()), mobj);
