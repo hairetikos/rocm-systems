@@ -27,10 +27,9 @@
 #include <hip/hip_runtime.h>
 #include <iostream>
 #include <vector>
-#ifdef MPI_VERSION
+#ifdef USE_MPI
 #include <mpi.h>
-#define USING_MPI
-#endif // MPI_VERSION
+#endif // USE_MPI
 
 // Helper macro for HIP error checking
 #define HIP_CHECK(call)                                                        \
@@ -44,10 +43,35 @@
   } while (0)
 
 void initialize(float *U, int N) {
+  #ifdef USE_MPI
+    // Get the number of processes
+    int num_procs;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    // Get the rank of the process
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int N_total = N * num_procs;
+    int start = rank * N + 1;
+    int end = (rank + 1) * N;
+  #endif // USE_MPI
+
+  // The grid is partitioned among MPI processes in the vertical direction
   for (int i = 0; i < N; ++i) {
+  #ifdef USE_MPI
+    // The halo regions are not initialized here
+    // They are obtained from the neighboring rank
+    for (int j = start; j < end; ++j) {
+  #else
     for (int j = 0; j < N; ++j) {
+  #endif // USE_MPI
       float x = 2.0f * (float)i / (float)N - 1.0f;
+    #ifdef USE_MPI
+      float y = 2.0f * (float)j / (float)N_total - 1.0f;
+    #else
       float y = 2.0f * (float)j / (float)N - 1.0f;
+    #endif // USE_MPI
       U[i * N + j] = 1.0f / (1.0f + x * x + y * y); // Initial guess
     }
   }
@@ -104,21 +128,28 @@ __global__ void jacobi_iteration(float *__restrict__ U_new,
 }
 
 int main(int argc, char *argv[]) {
-  #ifdef USING_MPI
+  #ifdef USE_MPI
     // Initialize MPI 
     MPI_Init(&argc, &argv);
+
+    // Get the number of processes
+    int num_procs;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     // Get the rank of the process
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  #endif // USING_MPI
+  #else
+    int num_procs = 1;
+    int rank = 0;
+  #endif // USE_MPI
 
   int iter = 1000;
   std::vector<int> launch_order;
 
-  #ifdef USING_MPI
+  #ifdef USE_MPI
     if (rank == 0) {
-  #endif // USING_MPI
+  #endif // USE_MPI
       // Parse command-line arguments
       for (int i = 0; i < argc; i++) {
         if (std::string(argv[i]) == "-i" && i + 1 < argc) {
@@ -145,7 +176,7 @@ int main(int argc, char *argv[]) {
       if (launch_order.empty()) {
         launch_order = {0, 1, 2};
       }
-  #ifdef USING_MPI
+  #ifdef USE_MPI
     }
 
     // Broadcast number of iterations to all processes
@@ -159,7 +190,7 @@ int main(int argc, char *argv[]) {
       launch_order.resize(order_size);
 
     MPI_Bcast(launch_order.data(), order_size, MPI_INT, 0, MPI_COMM_WORLD);
-  #endif // USING_MPI
+  #endif // USE_MPI
 
 
   // Problem size
@@ -178,10 +209,29 @@ int main(int argc, char *argv[]) {
   dim3 gridSize_large((n_large + blockSize_large.x - 1) / blockSize_large.x,
                       (n_large + blockSize_large.y - 1) / blockSize_large.y);
 
+  const int nx_small = n_small;
+  const int nx_mid = n_mid;
+  const int nx_large = n_large;
+  
+  #ifdef USE_MPI
+    // Set device based on rank
+    int num_devices;
+    HIP_CHECK(hipGetDeviceCount(&num_devices));
+    HIP_CHECK(hipSetDevice(rank % num_devices));
+
+    const int ny_small = n_small + 2;
+    const int ny_mid = n_mid + 2;
+    const int ny_large = n_large + 2;
+  #else
+    const int ny_small = n_small;
+    const int ny_mid = n_mid;
+    const int ny_large = n_large;
+  #endif // USE_MPI
+
   // Host memory pointers
-  float *h_U_small = new float[n_small * n_small];
-  float *h_U_mid = new float[n_mid * n_mid];
-  float *h_U_large = new float[n_large * n_large];
+  float *h_U_small = new float[nx_small * ny_small];
+  float *h_U_mid = new float[nx_mid * ny_mid];
+  float *h_U_large = new float[nx_large * ny_large];
 
   // Initialize host arrays
   initialize(h_U_small, n_small);
@@ -194,23 +244,23 @@ int main(int argc, char *argv[]) {
   float *d_U_large_new, *d_U_large_old;
 
   // Allocate device memory
-  HIP_CHECK(hipMalloc(&d_U_small_new, n_small * n_small * sizeof(float)));
-  HIP_CHECK(hipMalloc(&d_U_small_old, n_small * n_small * sizeof(float)));
+  HIP_CHECK(hipMalloc(&d_U_small_new, nx_small * ny_small * sizeof(float)));
+  HIP_CHECK(hipMalloc(&d_U_small_old, nx_small * ny_small * sizeof(float)));
 
-  HIP_CHECK(hipMalloc(&d_U_mid_new, n_mid * n_mid * sizeof(float)));
-  HIP_CHECK(hipMalloc(&d_U_mid_old, n_mid * n_mid * sizeof(float)));
+  HIP_CHECK(hipMalloc(&d_U_mid_new, nx_mid * ny_mid * sizeof(float)));
+  HIP_CHECK(hipMalloc(&d_U_mid_old, nx_mid * ny_mid * sizeof(float)));
 
-  HIP_CHECK(hipMalloc(&d_U_large_new, n_large * n_large * sizeof(float)));
-  HIP_CHECK(hipMalloc(&d_U_large_old, n_large * n_large * sizeof(float)));
+  HIP_CHECK(hipMalloc(&d_U_large_new, nx_large * ny_large * sizeof(float)));
+  HIP_CHECK(hipMalloc(&d_U_large_old, nx_large * ny_large * sizeof(float)));
 
   // Copy host arrays to device
   HIP_CHECK(hipMemcpy(d_U_small_old, h_U_small,
-                      n_small * n_small * sizeof(float),
+                      nx_small * ny_small * sizeof(float),
                       hipMemcpyHostToDevice));
-  HIP_CHECK(hipMemcpy(d_U_mid_old, h_U_mid, n_mid * n_mid * sizeof(float),
+  HIP_CHECK(hipMemcpy(d_U_mid_old, h_U_mid, nx_mid * ny_mid * sizeof(float),
                       hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(d_U_large_old, h_U_large,
-                      n_large * n_large * sizeof(float),
+                      nx_large * ny_large * sizeof(float),
                       hipMemcpyHostToDevice));
 
   std::vector<dim3> grid_sizes = {gridSize_small, gridSize_mid, gridSize_large};
@@ -219,6 +269,27 @@ int main(int argc, char *argv[]) {
   std::vector<float *> d_U_news = {d_U_small_new, d_U_mid_new, d_U_large_new};
   std::vector<float *> d_U_olds = {d_U_small_old, d_U_mid_old, d_U_large_old};
   std::vector<int> n_sizes = {n_small, n_mid, n_large};
+
+  #ifdef USE_MPI
+    int left = rank == 0 ? num_procs - 1 : rank - 1;
+    int right = (rank + 1) % num_procs;
+
+    int num_requests = 4 * n_sizes.size(); 
+    std::vector<MPI_Request> requests(num_requests);
+
+    // Number of simulation sizes should be small, so std::size_t to int conversion should be safe
+    for (int i = 0; i < n_sizes.size(); i++){
+      // Send data to left node
+      MPI_Isend(&d_U_olds[i][n_sizes[i]], n_sizes[i], MPI_INT, left, 2*i, MPI_COMM_WORLD, &requests[4*i]);
+      MPI_Irecv(&d_U_olds[i][n_sizes[i]*n_sizes[i]], n_sizes[i], MPI_INT, right, 2*i, MPI_COMM_WORLD, &requests[4*i+1]);
+
+      // Send data to right node
+      MPI_Isend(&d_U_olds[i][n_sizes[i]*(n_sizes[i]+1)], n_sizes[i], MPI_INT, right, 2*i+1, MPI_COMM_WORLD, &requests[4*i+2]);
+      MPI_Irecv(&d_U_olds[i][0], n_sizes[i], MPI_INT, left, 2*i+1, MPI_COMM_WORLD, &requests[4*i+3]);
+    }
+
+    MPI_Waitall(num_requests, requests.data(), MPI_STATUSES_IGNORE);
+  #endif // USE_MPI
 
   // Perform Jacobi iterations
   for (int it = 0; it < iter; ++it) {
@@ -229,10 +300,35 @@ int main(int argc, char *argv[]) {
                                             n_sizes[i]);
 
     HIP_CHECK(hipDeviceSynchronize());
-
     // Swap pointers
     std::swap(d_U_news[i], d_U_olds[i]);
+
+    #ifdef USE_MPI
+      std::vector<MPI_Request> requests(4);
+
+      // Send data to left node
+      MPI_Isend(&d_U_olds[i][n_sizes[i]], n_sizes[i], MPI_INT, left, 0, MPI_COMM_WORLD, &requests[0]);
+      MPI_Irecv(&d_U_olds[i][n_sizes[i]*n_sizes[i]], n_sizes[i], MPI_INT, right, 0, MPI_COMM_WORLD, &requests[1]);
+
+      // Send data to right node
+      MPI_Isend(&d_U_olds[i][n_sizes[i]*(n_sizes[i]+1)], n_sizes[i], MPI_INT, right, 1, MPI_COMM_WORLD, &requests[2]);
+      MPI_Irecv(&d_U_olds[i][0], n_sizes[i], MPI_INT, left, 1, MPI_COMM_WORLD, &requests[3]);
+
+      MPI_Waitall(4, requests.data(), MPI_STATUSES_IGNORE);
+    #endif // USE_MPI
   }
+
+  // Pedagogical
+  // Copy device data to host
+  HIP_CHECK(hipMemcpy(h_U_small, d_U_small_old,
+                      nx_small * ny_small * sizeof(float),
+                      hipMemcpyDeviceToHost));
+  HIP_CHECK(hipMemcpy(h_U_mid, d_U_mid_old, nx_mid * ny_mid * sizeof(float),
+                      hipMemcpyDeviceToHost));
+  HIP_CHECK(hipMemcpy(h_U_large, d_U_large_old,
+                      nx_large * ny_large * sizeof(float),
+                      hipMemcpyDeviceToHost));
+
 
   // Free device memory
   HIP_CHECK(hipFree(d_U_small_new));
@@ -246,10 +342,10 @@ int main(int argc, char *argv[]) {
   delete[] h_U_mid;
   delete[] h_U_large;
 
-  #ifdef USING_MPI
+  #ifdef USE_MPI
     // Finalize MPI
     MPI_Finalize();
-  #endif // USING_MPI
+  #endif // USE_MPI
 
   return 0;
 }
