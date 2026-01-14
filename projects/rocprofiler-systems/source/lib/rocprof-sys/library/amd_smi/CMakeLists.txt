@@ -15,6 +15,6 @@ target_link_libraries(
     PRIVATE rocprofiler-systems-googletest-library rocprofiler-systems-core-library
 )
 
-if(ROCPROFSYS_BUILD_TESTING)
+if(ROCPROFSYS_BUILD_TESTING AND ROCPROFSYS_USE_ROCM)
     add_subdirectory(tests)
 endif()

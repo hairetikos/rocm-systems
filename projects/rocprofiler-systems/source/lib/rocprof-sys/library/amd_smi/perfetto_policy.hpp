@@ -64,8 +64,9 @@ const auto UMC_BUSY_VALUE = enabled_metric{ .bits = { .umc_activity = 1 } }.valu
 const auto MM_BUSY_VALUE  = enabled_metric{ .bits = { .mm_activity = 1 } }.value;
 const auto TEMPERATURE_VALUE =
     enabled_metric{ .bits = { .hotspot_temperature = 1, .edge_temperature = 1 } }.value;
-const auto CURRENT_POWER_VALUE =
-    enabled_metric{ .bits = { .current_socket_power = 1, .average_socket_power = 1 } }.value;
+const auto CURRENT_POWER_VALUE = enabled_metric{
+    .bits = { .current_socket_power = 1, .average_socket_power = 1 }
+}.value;
 const auto MEMORY_USAGE_VALUE  = enabled_metric{ .bits = { .memory_usage = 1 } }.value;
 const auto VCN_ACTIVITY_VALUE  = enabled_metric{ .bits = { .vcn_activity = 1 } }.value;
 const auto JPEG_ACTIVITY_VALUE = enabled_metric{ .bits = { .jpeg_activity = 1 } }.value;
@@ -414,7 +415,8 @@ private:
         static std::once_flag once_flag;
         std::call_once(once_flag, [&]() {
             printf("JPEG activity: %d, enabled: %d, supported: %d\n",
-                   effective_metrics.bits.jpeg_activity, enabled_metrics.bits.jpeg_activity,
+                   effective_metrics.bits.jpeg_activity,
+                   enabled_metrics.bits.jpeg_activity,
                    supported_metrics.bits.jpeg_activity);
         });
 
@@ -444,6 +446,7 @@ private:
                                      const smi_metrics&    metrics,
                                      const enabled_metric& effective_metrics)
     {
+        printf("Processing XGMI metrics: %d\n", effective_metrics.bits.xgmi);
         if(!effective_metrics.bits.xgmi)
         {
             return;

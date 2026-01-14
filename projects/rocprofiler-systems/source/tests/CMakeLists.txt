@@ -20,13 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-add_executable(
-    rocprof-sys-unit-tests
+set(UNIT_TEST_OBJECTS
     $<TARGET_OBJECTS:lib-common-tests>
     $<TARGET_OBJECTS:trace-cache-tests>
     $<TARGET_OBJECTS:demangler-tests>
-    $<TARGET_OBJECTS:amd-smi-tests>
 )
+
+if(ROCPROFSYS_USE_ROCM)
+    list(APPEND UNIT_TEST_OBJECTS $<TARGET_OBJECTS:amd-smi-tests>)
+endif()
+
+add_executable(rocprof-sys-unit-tests ${UNIT_TEST_OBJECTS})
 
 target_link_libraries(
     rocprof-sys-unit-tests
