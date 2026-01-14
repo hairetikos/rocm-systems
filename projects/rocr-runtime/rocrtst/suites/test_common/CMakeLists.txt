@@ -488,29 +488,49 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 
 # Check for numa library and header
 find_package(PkgConfig)
-find_package(NUMA)
-if(NUMA_FOUND)
-  set(NUMA_LIBS ${NUMA_LIBRARIES})
-  message(STATUS "Found NUMA package: ${NUMA_LIBRARIES}")
-  if(NUMA_INCLUDE_DIRS)
-    include_directories(${NUMA_INCLUDE_DIRS})
-    message(STATUS "NUMA include dirs: ${NUMA_INCLUDE_DIRS}")
+
+# First check if we're in a TheRock build with rocm_sysdeps
+set(NUMA_FOUND FALSE)
+set(THEROCK_NUMA_LIB "")
+
+# Check both build and install locations for rocm_sysdeps numa
+if(EXISTS "${PROJECT_BINARY_DIR}/../lib/rocm_sysdeps/lib")
+  file(GLOB THEROCK_NUMA_LIB "${PROJECT_BINARY_DIR}/../lib/rocm_sysdeps/lib/librocm_sysdeps_numa.so*")
+  if(THEROCK_NUMA_LIB)
+    list(GET THEROCK_NUMA_LIB 0 THEROCK_NUMA_LIB)
+    set(NUMA_LIBS ${THEROCK_NUMA_LIB})
+    set(NUMA_FOUND TRUE)
+    set(HAVE_NUMA TRUE)
+    message(STATUS "Found TheRock rocm_sysdeps numa library: ${THEROCK_NUMA_LIB}")
   endif()
-  set(HAVE_NUMA TRUE)
-else()
-  # Fallback to manual detection
-  find_library(NUMA_LIBRARY NAMES numa)
-  if(NUMA_LIBRARY)
-    set(NUMA_LIBS ${NUMA_LIBRARY})
-    message(STATUS "Found numa library (fallback): ${NUMA_LIBRARY}")
+endif()
+
+# If not found in TheRock build, try standard system/package search
+if(NOT NUMA_FOUND)
+  find_package(NUMA)
+  if(NUMA_FOUND)
+    set(NUMA_LIBS ${NUMA_LIBRARIES})
+    message(STATUS "Found NUMA package: ${NUMA_LIBRARIES}")
+    if(NUMA_INCLUDE_DIRS)
+      include_directories(${NUMA_INCLUDE_DIRS})
+      message(STATUS "NUMA include dirs: ${NUMA_INCLUDE_DIRS}")
+    endif()
     set(HAVE_NUMA TRUE)
   else()
-    message(WARNING "NUMA library not found. Building without numa support.")
-    message(WARNING "  Install libnuma-dev (Debian/Ubuntu) or numactl-devel (RHEL/CentOS)")
-    set(NUMA_LIBS "")
-    set(HAVE_NUMA FALSE)
-    # Exclude numa-dependent files from build
-    list(FILTER performanceSources EXCLUDE REGEX ".*memory_async_copy.*\\.cc$")
+    # Fallback to manual detection
+    find_library(NUMA_LIBRARY NAMES numa)
+    if(NUMA_LIBRARY)
+      set(NUMA_LIBS ${NUMA_LIBRARY})
+      message(STATUS "Found numa library (fallback): ${NUMA_LIBRARY}")
+      set(HAVE_NUMA TRUE)
+    else()
+      message(WARNING "NUMA library not found. Building without numa support.")
+      message(WARNING "  Install libnuma-dev (Debian/Ubuntu) or numactl-devel (RHEL/CentOS)")
+      set(NUMA_LIBS "")
+      set(HAVE_NUMA FALSE)
+      # Exclude numa-dependent files from build
+      list(FILTER performanceSources EXCLUDE REGEX ".*memory_async_copy.*\\.cc$")
+    endif()
   endif()
 endif()
 
@@ -581,6 +601,9 @@ if(EXISTS "${PROJECT_BINARY_DIR}/../lib/rocm_sysdeps/lib" OR
   message(STATUS "Detected TheRock build environment - adding rocm_sysdeps to RPATH")
   set(_rocrtst_build_rpath "${_rocrtst_build_rpath};$ORIGIN/../../lib/rocm_sysdeps/lib")
   set(_rocrtst_install_rpath "${_rocrtst_install_rpath};$ORIGIN/../../lib/rocm_sysdeps/lib")
+  set(_is_therock_build TRUE)
+else()
+  set(_is_therock_build FALSE)
 endif()
 
 set_property(TARGET ${ROCRTST} PROPERTY BUILD_RPATH "${_rocrtst_build_rpath}")
@@ -593,5 +616,39 @@ install(TARGETS ${ROCRTST}
         RUNTIME DESTINATION bin)
 
 install ( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../thirdparty/lib DESTINATION lib/rocrtst )
+
+# For TheRock builds, bundle real libnuma with rocrtst so hwloc can find it with proper version symbols
+# rocm_sysdeps provides librocm_sysdeps_numa.so.1 but it lacks the version symbols hwloc needs
+if(_is_therock_build)
+  find_library(SYSTEM_NUMA NAMES numa PATHS /usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu /usr/lib64 /lib64 NO_DEFAULT_PATH)
+  if(SYSTEM_NUMA)
+    message(STATUS "Will bundle system libnuma for hwloc compatibility: ${SYSTEM_NUMA}")
+    # Get the realpath to resolve any symlinks
+    get_filename_component(NUMA_REALPATH ${SYSTEM_NUMA} REALPATH)
+    
+    # Install the actual libnuma library files to rocrtst's lib directory
+    install(FILES ${NUMA_REALPATH} DESTINATION lib/rocrtst/lib)
+    install(FILES ${SYSTEM_NUMA} DESTINATION lib/rocrtst/lib)
+    
+    # Create symlinks at install time if needed
+    install(CODE "
+      set(NUMA_REALPATH \"${NUMA_REALPATH}\")
+      set(DEST_DIR \"\${CMAKE_INSTALL_PREFIX}/lib/rocrtst/lib\")
+      get_filename_component(NUMA_REALNAME \"\${NUMA_REALPATH}\" NAME)
+      
+      # Create libnuma.so.1 symlink if it doesn't exist
+      if(NOT EXISTS \"\${DEST_DIR}/libnuma.so.1\")
+        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink \${NUMA_REALNAME} \"\${DEST_DIR}/libnuma.so.1\")
+      endif()
+      
+      # Create libnuma.so symlink if it doesn't exist  
+      if(NOT EXISTS \"\${DEST_DIR}/libnuma.so\")
+        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink libnuma.so.1 \"\${DEST_DIR}/libnuma.so\")
+      endif()
+    ")
+  else()
+    message(WARNING "System libnuma not found - hwloc may fail at runtime in TheRock environment")
+  endif()
+endif()
 
 include ( CPack )
