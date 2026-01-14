@@ -643,6 +643,10 @@ hipError_t hipGraphicsMapResources(int count, hipGraphicsResource_t* resources,
     HIP_RETURN(hipErrorUnknown);
   }
 
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorContextIsDestroyed);
+  }
+
   hip::Stream* hip_stream = hip::getStream(stream);
   if (nullptr == hip_stream) {
     HIP_RETURN(hipErrorUnknown);
