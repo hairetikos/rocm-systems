@@ -59,18 +59,18 @@ struct track_description
     std::vector<size_t> track_indexes;
 };
 
-const auto GFX_BUSY_VALUE = enabled_metric{ .gfx_activity = 1 }.value;
-const auto UMC_BUSY_VALUE = enabled_metric{ .umc_activity = 1 }.value;
-const auto MM_BUSY_VALUE  = enabled_metric{ .mm_activity = 1 }.value;
+const auto GFX_BUSY_VALUE = enabled_metric{ .bits = { .gfx_activity = 1 } }.value;
+const auto UMC_BUSY_VALUE = enabled_metric{ .bits = { .umc_activity = 1 } }.value;
+const auto MM_BUSY_VALUE  = enabled_metric{ .bits = { .mm_activity = 1 } }.value;
 const auto TEMPERATURE_VALUE =
-    enabled_metric{ .hotspot_temperature = 1, .edge_temperature = 1 }.value;
+    enabled_metric{ .bits = { .hotspot_temperature = 1, .edge_temperature = 1 } }.value;
 const auto CURRENT_POWER_VALUE =
-    enabled_metric{ .current_socket_power = 1, .average_socket_power = 1 }.value;
-const auto MEMORY_USAGE_VALUE  = enabled_metric{ .memory_usage = 1 }.value;
-const auto VCN_ACTIVITY_VALUE  = enabled_metric{ .vcn_activity = 1 }.value;
-const auto JPEG_ACTIVITY_VALUE = enabled_metric{ .jpeg_activity = 1 }.value;
-const auto XGMI_VALUE          = enabled_metric{ .xgmi = 1 }.value;
-const auto PCIE_VALUE          = enabled_metric{ .pcie = 1 }.value;
+    enabled_metric{ .bits = { .current_socket_power = 1, .average_socket_power = 1 } }.value;
+const auto MEMORY_USAGE_VALUE  = enabled_metric{ .bits = { .memory_usage = 1 } }.value;
+const auto VCN_ACTIVITY_VALUE  = enabled_metric{ .bits = { .vcn_activity = 1 } }.value;
+const auto JPEG_ACTIVITY_VALUE = enabled_metric{ .bits = { .jpeg_activity = 1 } }.value;
+const auto XGMI_VALUE          = enabled_metric{ .bits = { .xgmi = 1 } }.value;
+const auto PCIE_VALUE          = enabled_metric{ .bits = { .pcie = 1 } }.value;
 
 inline std::unordered_map<uint32_t, track_description>&
 get_perfetto_tracks()
@@ -207,7 +207,7 @@ struct perfetto_policy
             }
         }
 
-        if(enabled_metrics.xgmi)
+        if(enabled_metrics.bits.xgmi)
         {
             auto& xgmi_tracks = get_xgmi_tracks()[device_index];
 
@@ -225,7 +225,7 @@ struct perfetto_policy
             }
         }
 
-        if(enabled_metrics.pcie)
+        if(enabled_metrics.bits.pcie)
         {
             auto& pcie_tracks = get_pcie_tracks()[device_index];
 
@@ -315,7 +315,7 @@ private:
         const enabled_metric&                            effective_metrics,
         std::unordered_map<uint32_t, track_description>& tracks)
     {
-        if(effective_metrics.gfx_activity &&
+        if(effective_metrics.bits.gfx_activity &&
            !tracks.at(GFX_BUSY_VALUE).track_indexes.empty())
         {
             TRACE_COUNTER("device_busy_gfx",
@@ -324,7 +324,7 @@ private:
                           ts, static_cast<double>(metrics.gfx_activity));
         }
 
-        if(effective_metrics.umc_activity &&
+        if(effective_metrics.bits.umc_activity &&
            !tracks.at(UMC_BUSY_VALUE).track_indexes.empty())
         {
             TRACE_COUNTER("device_busy_umc",
@@ -333,7 +333,7 @@ private:
                           ts, static_cast<double>(metrics.umc_activity));
         }
 
-        if(effective_metrics.mm_activity &&
+        if(effective_metrics.bits.mm_activity &&
            !tracks.at(MM_BUSY_VALUE).track_indexes.empty())
         {
             TRACE_COUNTER("device_busy_mm",
@@ -342,11 +342,11 @@ private:
                           ts, static_cast<double>(metrics.mm_activity));
         }
 
-        if((effective_metrics.edge_temperature ||
-            effective_metrics.hotspot_temperature) &&
+        if((effective_metrics.bits.edge_temperature ||
+            effective_metrics.bits.hotspot_temperature) &&
            !tracks.at(TEMPERATURE_VALUE).track_indexes.empty())
         {
-            const double temp = effective_metrics.hotspot_temperature
+            const double temp = effective_metrics.bits.hotspot_temperature
                                     ? metrics.hotspot_temperature
                                     : metrics.edge_temperature;
             TRACE_COUNTER(
@@ -356,11 +356,11 @@ private:
                 ts, temp);
         }
 
-        if((effective_metrics.average_socket_power ||
-            effective_metrics.current_socket_power) &&
+        if((effective_metrics.bits.average_socket_power ||
+            effective_metrics.bits.current_socket_power) &&
            !tracks.at(CURRENT_POWER_VALUE).track_indexes.empty())
         {
-            const double power = effective_metrics.average_socket_power
+            const double power = effective_metrics.bits.average_socket_power
                                      ? metrics.average_socket_power
                                      : metrics.current_socket_power;
             TRACE_COUNTER(
@@ -370,7 +370,7 @@ private:
                 ts, power);
         }
 
-        if(effective_metrics.memory_usage &&
+        if(effective_metrics.bits.memory_usage &&
            !tracks.at(MEMORY_USAGE_VALUE).track_indexes.empty())
         {
             const double usage =
@@ -389,7 +389,7 @@ private:
         const enabled_metric&                            supported_metrics,
         std::unordered_map<uint32_t, track_description>& tracks)
     {
-        if(effective_metrics.vcn_activity &&
+        if(effective_metrics.bits.vcn_activity &&
            !tracks.at(VCN_ACTIVITY_VALUE).track_indexes.empty())
         {
             size_t engine_id = 0;
@@ -414,11 +414,11 @@ private:
         static std::once_flag once_flag;
         std::call_once(once_flag, [&]() {
             printf("JPEG activity: %d, enabled: %d, supported: %d\n",
-                   effective_metrics.jpeg_activity, enabled_metrics.jpeg_activity,
-                   supported_metrics.jpeg_activity);
+                   effective_metrics.bits.jpeg_activity, enabled_metrics.bits.jpeg_activity,
+                   supported_metrics.bits.jpeg_activity);
         });
 
-        if(effective_metrics.jpeg_activity &&
+        if(effective_metrics.bits.jpeg_activity &&
            !tracks.at(JPEG_ACTIVITY_VALUE).track_indexes.empty())
         {
             size_t engine_id = 0;
@@ -444,7 +444,7 @@ private:
                                      const smi_metrics&    metrics,
                                      const enabled_metric& effective_metrics)
     {
-        if(!effective_metrics.xgmi)
+        if(!effective_metrics.bits.xgmi)
         {
             return;
         }
@@ -502,7 +502,7 @@ private:
                                      const smi_metrics&    metrics,
                                      const enabled_metric& effective_metrics)
     {
-        if(!effective_metrics.pcie)
+        if(!effective_metrics.bits.pcie)
         {
             return;
         }

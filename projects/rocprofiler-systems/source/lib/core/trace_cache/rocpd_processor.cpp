@@ -355,28 +355,29 @@ rocpd_processor_t::handle(const amd_smi_sample& _amd_smi)
     insert_scalar(
         trait::name<category::amd_smi_gfx_busy>::value,
         info::annotate_with_device_id<category::amd_smi_gfx_busy>(_amd_smi.device_id),
-        enabled.gfx_activity, m.gfx_activity);
+        enabled.bits.gfx_activity, m.gfx_activity);
     insert_scalar(
         trait::name<category::amd_smi_umc_busy>::value,
         info::annotate_with_device_id<category::amd_smi_umc_busy>(_amd_smi.device_id),
-        enabled.umc_activity, m.umc_activity);
+        enabled.bits.umc_activity, m.umc_activity);
     insert_scalar(
         trait::name<category::amd_smi_mm_busy>::value,
         info::annotate_with_device_id<category::amd_smi_mm_busy>(_amd_smi.device_id),
-        enabled.mm_activity, m.mm_activity);
+        enabled.bits.mm_activity, m.mm_activity);
     insert_scalar(
         trait::name<category::amd_smi_temp>::value,
         info::annotate_with_device_id<category::amd_smi_temp>(_amd_smi.device_id),
-        enabled.hotspot_temperature, m.hotspot_temperature);
+        enabled.bits.hotspot_temperature, m.hotspot_temperature);
     insert_scalar(
         trait::name<category::amd_smi_power>::value,
         info::annotate_with_device_id<category::amd_smi_power>(_amd_smi.device_id),
-        enabled.current_socket_power || enabled.average_socket_power,
-        enabled.current_socket_power ? m.current_socket_power : m.average_socket_power);
+        enabled.bits.current_socket_power || enabled.bits.average_socket_power,
+        enabled.bits.current_socket_power ? m.current_socket_power
+                                          : m.average_socket_power);
     insert_scalar(
         trait::name<category::amd_smi_memory_usage>::value,
         info::annotate_with_device_id<category::amd_smi_memory_usage>(_amd_smi.device_id),
-        enabled.memory_usage, m.memory_usage / 1024.0);
+        enabled.bits.memory_usage, m.memory_usage / 1024.0);
 
     // XCP array metrics (VCN/JPEG)
     auto insert_xcp_metrics = [&](const char* base_name, const std::string& base_track,
@@ -399,49 +400,49 @@ rocpd_processor_t::handle(const amd_smi_sample& _amd_smi)
     insert_xcp_metrics(
         trait::name<category::amd_smi_vcn_activity>::value,
         info::annotate_with_device_id<category::amd_smi_vcn_activity>(_amd_smi.device_id),
-        enabled.vcn_activity,
+        enabled.bits.vcn_activity,
         [](const auto& xcp) -> const auto& { return xcp.vcn_busy; });
     insert_xcp_metrics(trait::name<category::amd_smi_jpeg_activity>::value,
                        info::annotate_with_device_id<category::amd_smi_jpeg_activity>(
                            _amd_smi.device_id),
-                       enabled.jpeg_activity,
+                       enabled.bits.jpeg_activity,
                        [](const auto& xcp) -> const auto& { return xcp.jpeg_busy; });
 
     // PCIe metrics
     insert_scalar(trait::name<category::amd_smi_pcie_link_width>::value,
                   info::annotate_with_device_id<category::amd_smi_pcie_link_width>(
                       _amd_smi.device_id),
-                  enabled.pcie, m.pcie.link.width);
+                  enabled.bits.pcie, m.pcie.link.width);
     insert_scalar(trait::name<category::amd_smi_pcie_link_speed>::value,
                   info::annotate_with_device_id<category::amd_smi_pcie_link_speed>(
                       _amd_smi.device_id),
-                  enabled.pcie, m.pcie.link.speed);
+                  enabled.bits.pcie, m.pcie.link.speed);
     insert_scalar(trait::name<category::amd_smi_pcie_bandwidth_acc>::value,
                   info::annotate_with_device_id<category::amd_smi_pcie_bandwidth_acc>(
                       _amd_smi.device_id),
-                  enabled.pcie, m.pcie.bandwidth.acc);
+                  enabled.bits.pcie, m.pcie.bandwidth.acc);
     insert_scalar(trait::name<category::amd_smi_pcie_bandwidth_inst>::value,
                   info::annotate_with_device_id<category::amd_smi_pcie_bandwidth_inst>(
                       _amd_smi.device_id),
-                  enabled.pcie, m.pcie.bandwidth.inst);
+                  enabled.bits.pcie, m.pcie.bandwidth.inst);
 /*
     //TODO: XGMI metrics
     insert_scalar(trait::name<category::amd_smi_xgmi_link_width>::value,
                   info::annotate_with_device_id<category::amd_smi_xgmi_link_width>(
                       _amd_smi.device_id),
-                  enabled.xgmi, m.xgmi.link.width);
+                  enabled.bits.xgmi, m.xgmi.link.width);
     insert_scalar(trait::name<category::amd_smi_xgmi_link_speed>::value,
                   info::annotate_with_device_id<category::amd_smi_xgmi_link_speed>(
                       _amd_smi.device_id),
-                  enabled.xgmi, m.xgmi.link.speed);
+                  enabled.bits.xgmi, m.xgmi.link.speed);
     insert_scalar(trait::name<category::amd_smi_xgmi_read_data_acc>::value,
                   info::annotate_with_device_id<category::amd_smi_xgmi_read_data_acc>(
                       _amd_smi.device_id),
-                  enabled.xgmi, m.xgmi.data_acc.read);
+                  enabled.bits.xgmi, m.xgmi.data_acc.read);
     insert_scalar(trait::name<category::amd_smi_xgmi_write_data_acc>::value,
                   info::annotate_with_device_id<category::amd_smi_xgmi_write_data_acc>(
                       _amd_smi.device_id),
-                  enabled.xgmi, m.xgmi.data_acc.write);
+                  enabled.bits.xgmi, m.xgmi.data_acc.write);
 */
 #endif
 }

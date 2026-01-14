@@ -215,8 +215,8 @@ TEST_F(processor_test, get_smi_metrics_handles_not_supported_values)
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
     auto supported = proc.get_supported_metrics();
-    EXPECT_FALSE(supported.pcie);
-    EXPECT_FALSE(supported.xgmi);
+    EXPECT_FALSE(supported.bits.pcie);
+    EXPECT_FALSE(supported.bits.xgmi);
 }
 
 TEST_F(processor_test, get_smi_metrics_handles_not_supported)
@@ -256,12 +256,12 @@ TEST_F(processor_test, get_supported_metrics_returns_correct_flags)
 
     auto supported = proc.get_supported_metrics();
 
-    EXPECT_TRUE(supported.current_socket_power);
-    EXPECT_TRUE(supported.average_socket_power);
-    EXPECT_TRUE(supported.gfx_activity);
-    EXPECT_TRUE(supported.memory_usage);
-    EXPECT_TRUE(supported.hotspot_temperature);
-    EXPECT_TRUE(supported.edge_temperature);
+    EXPECT_TRUE(supported.bits.current_socket_power);
+    EXPECT_TRUE(supported.bits.average_socket_power);
+    EXPECT_TRUE(supported.bits.gfx_activity);
+    EXPECT_TRUE(supported.bits.memory_usage);
+    EXPECT_TRUE(supported.bits.hotspot_temperature);
+    EXPECT_TRUE(supported.bits.edge_temperature);
 }
 
 TEST_F(processor_test, get_supported_metrics_when_metrics_info_not_supported)
@@ -277,14 +277,14 @@ TEST_F(processor_test, get_supported_metrics_when_metrics_info_not_supported)
 
     auto supported = proc.get_supported_metrics();
 
-    EXPECT_FALSE(supported.current_socket_power);
-    EXPECT_FALSE(supported.average_socket_power);
-    EXPECT_FALSE(supported.gfx_activity);
-    EXPECT_FALSE(supported.umc_activity);
-    EXPECT_FALSE(supported.mm_activity);
-    EXPECT_FALSE(supported.memory_usage);
-    EXPECT_FALSE(supported.hotspot_temperature);
-    EXPECT_FALSE(supported.edge_temperature);
+    EXPECT_FALSE(supported.bits.current_socket_power);
+    EXPECT_FALSE(supported.bits.average_socket_power);
+    EXPECT_FALSE(supported.bits.gfx_activity);
+    EXPECT_FALSE(supported.bits.umc_activity);
+    EXPECT_FALSE(supported.bits.mm_activity);
+    EXPECT_FALSE(supported.bits.memory_usage);
+    EXPECT_FALSE(supported.bits.hotspot_temperature);
+    EXPECT_FALSE(supported.bits.edge_temperature);
 }
 
 TEST_F(processor_test, get_supported_metrics_with_metric_value_not_supported)
@@ -304,9 +304,9 @@ TEST_F(processor_test, get_supported_metrics_with_metric_value_not_supported)
 
     auto supported = proc.get_supported_metrics();
 
-    EXPECT_FALSE(supported.current_socket_power);
-    EXPECT_FALSE(supported.average_socket_power);
-    EXPECT_FALSE(supported.gfx_activity);
+    EXPECT_FALSE(supported.bits.current_socket_power);
+    EXPECT_FALSE(supported.bits.average_socket_power);
+    EXPECT_FALSE(supported.bits.gfx_activity);
 }
 
 TEST_F(processor_test, multiple_processors_have_different_indices)
@@ -341,7 +341,7 @@ TEST_F(processor_test, vcn_activity_metrics_supported)
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
     auto supported = proc.get_supported_metrics();
-    EXPECT_TRUE(supported.vcn_activity);
+    EXPECT_TRUE(supported.bits.vcn_activity);
 }
 
 TEST_F(processor_test, jpeg_activity_metrics_supported)
@@ -358,7 +358,7 @@ TEST_F(processor_test, jpeg_activity_metrics_supported)
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
     auto supported = proc.get_supported_metrics();
-    EXPECT_TRUE(supported.jpeg_activity);
+    EXPECT_TRUE(supported.bits.jpeg_activity);
 }
 
 TEST_F(processor_test, vcn_and_jpeg_metrics_not_supported_with_max_value)
@@ -385,8 +385,8 @@ TEST_F(processor_test, vcn_and_jpeg_metrics_not_supported_with_max_value)
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
     auto supported = proc.get_supported_metrics();
-    EXPECT_FALSE(supported.vcn_activity);
-    EXPECT_FALSE(supported.jpeg_activity);
+    EXPECT_FALSE(supported.bits.vcn_activity);
+    EXPECT_FALSE(supported.bits.jpeg_activity);
 }
 
 TEST_F(processor_test, get_smi_metrics_collects_vcn_activity)
@@ -448,7 +448,7 @@ TEST_F(processor_test, xgmi_metrics_supported_when_link_width_valid)
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
     auto supported = proc.get_supported_metrics();
-    EXPECT_TRUE(supported.xgmi);
+    EXPECT_TRUE(supported.bits.xgmi);
 }
 
 TEST_F(processor_test, xgmi_metrics_supported_when_read_data_valid)
@@ -471,7 +471,7 @@ TEST_F(processor_test, xgmi_metrics_supported_when_read_data_valid)
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
     auto supported = proc.get_supported_metrics();
-    EXPECT_TRUE(supported.xgmi);
+    EXPECT_TRUE(supported.bits.xgmi);
 }
 
 TEST_F(processor_test, pcie_metrics_supported_when_link_width_valid)
@@ -491,7 +491,7 @@ TEST_F(processor_test, pcie_metrics_supported_when_link_width_valid)
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
     auto supported = proc.get_supported_metrics();
-    EXPECT_TRUE(supported.pcie);
+    EXPECT_TRUE(supported.bits.pcie);
 }
 
 TEST_F(processor_test, pcie_metrics_supported_when_bandwidth_acc_valid)
@@ -511,7 +511,7 @@ TEST_F(processor_test, pcie_metrics_supported_when_bandwidth_acc_valid)
     processor<mock_driver> proc(m_mock_driver, handle, AMDSMI_PROCESSOR_TYPE_AMD_GPU, 0);
 
     auto supported = proc.get_supported_metrics();
-    EXPECT_TRUE(supported.pcie);
+    EXPECT_TRUE(supported.bits.pcie);
 }
 
 TEST_F(processor_test, metrics_failed_during_collection)
@@ -606,8 +606,8 @@ TEST_F(processor_test, temperature_metric_returned_as_not_supported_value)
 
     auto supported = proc.get_supported_metrics();
 
-    EXPECT_FALSE(supported.hotspot_temperature);
-    EXPECT_FALSE(supported.edge_temperature);
+    EXPECT_FALSE(supported.bits.hotspot_temperature);
+    EXPECT_FALSE(supported.bits.edge_temperature);
 }
 
 TEST_F(processor_test, edge_temperature_supported_but_hotspot_not)
@@ -626,8 +626,8 @@ TEST_F(processor_test, edge_temperature_supported_but_hotspot_not)
 
     auto supported = proc.get_supported_metrics();
 
-    EXPECT_FALSE(supported.hotspot_temperature);
-    EXPECT_TRUE(supported.edge_temperature);
+    EXPECT_FALSE(supported.bits.hotspot_temperature);
+    EXPECT_TRUE(supported.bits.edge_temperature);
 }
 
 TEST_F(processor_test, shared_driver_across_multiple_processors)
@@ -664,9 +664,9 @@ TEST_F(processor_test, umc_and_mm_activity_supported_when_gfx_not)
 
     auto supported = proc.get_supported_metrics();
 
-    EXPECT_FALSE(supported.gfx_activity);
-    EXPECT_TRUE(supported.umc_activity);
-    EXPECT_TRUE(supported.mm_activity);
+    EXPECT_FALSE(supported.bits.gfx_activity);
+    EXPECT_TRUE(supported.bits.umc_activity);
+    EXPECT_TRUE(supported.bits.mm_activity);
 }
 
 TEST_F(processor_test, is_supported_returns_true_with_valid_metrics)

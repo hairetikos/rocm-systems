@@ -62,7 +62,7 @@ union enabled_metric
         uint32_t jpeg_activity        : 1;
         uint32_t xgmi                 : 1;
         uint32_t pcie                 : 1;
-    };
+    } bits;
     uint32_t value = 0;
 };
 
@@ -82,18 +82,18 @@ to_string(const enabled_metric& metrics)
 {
     std::stringstream ss;
     ss << "[SMI enabled metrics] ";
-    ss << "Current socket power: " << metrics.current_socket_power
-       << ", Average socket power: " << metrics.average_socket_power
-       << ", Memory usage: " << static_cast<bool>(metrics.memory_usage)
-       << ", Hotspot temperature: " << static_cast<bool>(metrics.hotspot_temperature)
-       << ", Edge temperature: " << static_cast<bool>(metrics.edge_temperature)
-       << ", GFX activity: " << static_cast<bool>(metrics.gfx_activity)
-       << ", UMC activity: " << static_cast<bool>(metrics.umc_activity)
-       << ", MM activity: " << static_cast<bool>(metrics.mm_activity)
-       << ", VCN activity: " << static_cast<bool>(metrics.vcn_activity)
-       << ", JPEG activity: " << static_cast<bool>(metrics.jpeg_activity)
-       << ", XGMI: " << static_cast<bool>(metrics.xgmi)
-       << ", PCIE: " << static_cast<bool>(metrics.pcie) << "\n";
+    ss << "Current socket power: " << metrics.bits.current_socket_power
+       << ", Average socket power: " << metrics.bits.average_socket_power
+       << ", Memory usage: " << static_cast<bool>(metrics.bits.memory_usage)
+       << ", Hotspot temperature: " << static_cast<bool>(metrics.bits.hotspot_temperature)
+       << ", Edge temperature: " << static_cast<bool>(metrics.bits.edge_temperature)
+       << ", GFX activity: " << static_cast<bool>(metrics.bits.gfx_activity)
+       << ", UMC activity: " << static_cast<bool>(metrics.bits.umc_activity)
+       << ", MM activity: " << static_cast<bool>(metrics.bits.mm_activity)
+       << ", VCN activity: " << static_cast<bool>(metrics.bits.vcn_activity)
+       << ", JPEG activity: " << static_cast<bool>(metrics.bits.jpeg_activity)
+       << ", XGMI: " << static_cast<bool>(metrics.bits.xgmi)
+       << ", PCIE: " << static_cast<bool>(metrics.bits.pcie) << "\n";
     return ss.str();
 }
 
