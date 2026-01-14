@@ -667,8 +667,6 @@ struct Info : public amd::EmbeddedObject {
   size_t scratchLimitMax;  //! Maximum size of scratch limit of this device memory in bytes.
 
   uint32_t numberOfXccs_;  //! The number of XCC(s) on the device
-
-  bool hasExpertSchedMode_;  //! Device supports expert scheduling mode
   
   bool dmabufSupported_;  //!< DMABuf support flag
 };
@@ -1309,6 +1307,7 @@ class VirtualDevice : public amd::ReferenceCountedObject {
   virtual void submitUserEvent(amd::UserEvent& vcmd) { ShouldNotReachHere(); }
 
   virtual address allocKernelArguments(size_t size, size_t alignment) { return nullptr; }
+  virtual void ReleaseSdmaEngines() {}  //!< Release SDMA engine assignments (ROCm specific)
   virtual void ReleaseAllHwQueues() {}
   virtual void ReleaseHwQueue() {}
 
