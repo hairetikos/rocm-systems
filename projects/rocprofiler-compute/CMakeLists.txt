@@ -391,9 +391,8 @@ add_test(
 add_test(
     NAME test_metric_validation
     COMMAND
-        ${PYTHON_TEST_COMMAND} -m pytest
-        --junitxml=tests/test_metric_validation.xml ${COV_OPTION}
-        tests/test_metric_validation.py ${WORKING_DIR_OPTION}
+        ${PYTHON_TEST_COMMAND} -m pytest --junitxml=tests/test_metric_validation.xml
+        ${COV_OPTION} tests/test_metric_validation.py ${WORKING_DIR_OPTION}
 )
 
 set_tests_properties(
