@@ -71,7 +71,6 @@ endif()
 # populate version string
 configure_file(pyproject.toml.in ${PY_BUILD_DIR}/pyproject.toml @ONLY)
 configure_file(_version.py.in ${PY_PACKAGE_DIR}/_version.py @ONLY)
-configure_file(setup.py.in ${PY_BUILD_DIR}/setup.py @ONLY)
 if(BUILD_PYTHON_LIB)
     configure_file(_find_lib.py.in ${PY_PACKAGE_DIR}/_find_lib.py @ONLY)
 endif()
@@ -96,7 +95,6 @@ add_custom_command(OUTPUT ${PY_PACKAGE_DIR}/${PY_LIB_NAME} DEPENDS ${PY_LIB_PATH
 add_custom_target(
     python_package ALL
     DEPENDS ${PY_BUILD_DIR}/pyproject.toml
-            ${PY_BUILD_DIR}/setup.py
             ${PY_PACKAGE_DIR}/_version.py
             ${PY_PACKAGE_DIR}/__init__.py
             ${PY_PACKAGE_DIR}/amdsmi_exception.py
@@ -111,7 +109,7 @@ endif()
 
 install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/${PY_BUILD_DIR}/pyproject.toml
-          ${CMAKE_CURRENT_BINARY_DIR}/${PY_BUILD_DIR}/setup.py ${CMAKE_CURRENT_BINARY_DIR}/${PY_PACKAGE_DIR}/_version.py
+          ${CMAKE_CURRENT_BINARY_DIR}/${PY_PACKAGE_DIR}/_version.py
     DESTINATION ${PY_WRAPPER_INSTALL_DIR}
     COMPONENT dev)
 

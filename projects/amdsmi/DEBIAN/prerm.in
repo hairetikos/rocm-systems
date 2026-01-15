@@ -96,6 +96,7 @@ rm_python_lib() {
   pip_list_output=$(python3 -m pip list --format=columns --disable-pip-version-check)
   # check pip list output for amdsmi
   if [[ $pip_list_output == *"amdsmi"* ]]; then
+    # TODO ensure we don't uninstall a pacakge sourced from pypi, this should only remove the rocm version corresponding to the install
     PIP_ROOT_USER_ACTION=ignore PIP_BREAK_SYSTEM_PACKAGES=1 python3 -m pip uninstall amdsmi --yes --quiet --disable-pip-version-check
   fi
 
@@ -104,6 +105,7 @@ rm_python_lib() {
   if [[ $pip_list_output == *"amdsmi"* ]]; then
     echo "[WARNING] AMD-SMI python library (amdsmi) is still installed in pip. "\
       "Check post install to ensure version is correct"
+      # TODO, tell user to manually remove amdsmi and source any new python library from pypi.
   else
     echo "Removed AMD-SMI python library (amdsmi)..."
   fi
