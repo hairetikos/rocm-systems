@@ -33,6 +33,10 @@ static std::once_flag interopOnce;
 }
 
 namespace hip {
+
+std::unordered_set<hipGraphicsResource*> g_registeredGraphicsResources;
+amd::Monitor g_registeredGraphicsResourcesLock;
+
 // Sets up GL context association with amd context.
 // NOTE: Refer to Context setup code in OCLTestImp.cpp
 void setupGLInteropOnce() {
@@ -75,6 +79,13 @@ static inline hipError_t hipSetInteropObjects(int num_objects, void** mem_object
     void* obj = *mem_objects++;
     if (obj == nullptr) {
       return hipErrorInvalidResourceHandle;
+    }
+
+    {
+      amd::ScopedLock lock(g_registeredGraphicsResourcesLock);
+      if (!g_registeredGraphicsResources.contains(reinterpret_cast<hipGraphicsResource*>(obj))) {
+        return hipErrorInvalidResourceHandle;
+      }
     }
 
     amd::Memory* mem = reinterpret_cast<amd::Memory*>(obj);
@@ -530,6 +541,12 @@ hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint ima
   mem->processGLResource(device::Memory::GLDecompressResource);
 
   *resource = reinterpret_cast<hipGraphicsResource*>(pImageGL);
+
+  {
+    amd::ScopedLock lock(g_registeredGraphicsResourcesLock);
+    g_registeredGraphicsResources.insert(reinterpret_cast<hipGraphicsResource*>(pImageGL));
+  }
+
   HIP_RETURN(hipSuccess);
 }
 
@@ -626,6 +643,11 @@ hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint bu
   mem->processGLResource(device::Memory::GLDecompressResource);
 
   *resource = reinterpret_cast<hipGraphicsResource*>(pBufferGL);
+
+  {
+    amd::ScopedLock lock(g_registeredGraphicsResourcesLock);
+    g_registeredGraphicsResources.insert(reinterpret_cast<hipGraphicsResource*>(pBufferGL));
+  }
 
   HIP_RETURN(hipSuccess);
 }
@@ -786,6 +808,11 @@ hipError_t hipGraphicsUnregisterResource(hipGraphicsResource_t resource) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   reinterpret_cast<amd::BufferGL*>(resource)->release();
+
+  {
+    amd::ScopedLock lock(g_registeredGraphicsResourcesLock);
+    g_registeredGraphicsResources.erase(reinterpret_cast<hipGraphicsResource*>(resource));
+  }
 
   HIP_RETURN(hipSuccess);
 }
