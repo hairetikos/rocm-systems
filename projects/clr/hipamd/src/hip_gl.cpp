@@ -769,9 +769,13 @@ hipError_t hipGraphicsUnmapResources(int count, hipGraphicsResource_t* resources
   if (as_cl(&command->event()) == nullptr) {
     command->release();
   }
+
   for (auto& mobj : memObjects) {
+    device::Memory* mem = reinterpret_cast<device::Memory*>(mobj->getDeviceMemory(*curDev));
+    amd::MemObjMap::RemoveMemObj(reinterpret_cast<void*>(mem->virtualAddress()));
     mobj->release();
   }
+
   HIP_RETURN(hipSuccess);
 }
 
