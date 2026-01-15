@@ -669,6 +669,8 @@ struct Info : public amd::EmbeddedObject {
   uint32_t numberOfXccs_;  //! The number of XCC(s) on the device
   
   bool dmabufSupported_;  //!< DMABuf support flag
+
+  bool hasExpertSchedMode_;  //! Device supports expert scheduling mode
 };
 
 //! Device settings
