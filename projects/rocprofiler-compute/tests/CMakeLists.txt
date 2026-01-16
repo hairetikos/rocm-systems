@@ -64,7 +64,7 @@ set_target_properties(
 
 set(LAPLACE_EQN_SOURCES ../sample/laplace_eqn.hip)
 
-if (MPI_CXX_COMPILER)
+if(MPI_CXX_COMPILER)
     set_source_files_properties(${LAPLACE_EQN_SOURCES} PROPERTIES COMPILE_DEFINITIONS "USE_MPI" LANGUAGE HIP)
 else()
     set_source_files_properties(${LAPLACE_EQN_SOURCES} PROPERTIES LANGUAGE HIP)
@@ -76,7 +76,7 @@ set_target_properties(
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
 )
 
-if (MPI_CXX_COMPILER)
+if(MPI_CXX_COMPILER)
     # Link MPI libraries and include directories
     target_include_directories(laplace_eqn PRIVATE ${MPI_INCLUDE_PATH})
     target_link_libraries(laplace_eqn PRIVATE MPI::MPI_CXX)

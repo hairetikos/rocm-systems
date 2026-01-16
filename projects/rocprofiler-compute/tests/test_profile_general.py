@@ -942,7 +942,8 @@ def test_output_directory(binary_handler_profile_rocprof_compute):
             )
             binary_handler_profile_rocprof_compute(config, workload_dir)
             workload_dir = (
-                workload_dir.replace("%hostname%", hostname)
+                workload_dir
+                .replace("%hostname%", hostname)
                 .replace("%gpumodel%", gpumodel)
                 .replace("%env{ENV_1}%", "custom_env")
                 .replace("%rank%", rank)
@@ -966,7 +967,7 @@ def test_output_directory(binary_handler_profile_rocprof_compute):
                 "app_1",
                 rank,
             )
-            #assert os.path.exists(workload_dir)
+            # assert os.path.exists(workload_dir)
             test_utils.clean_output_dir(config["cleanup"], workload_dir)
             rank_env_vars["PMI_RANK"] = None
             os.chdir("..")
@@ -981,7 +982,7 @@ def test_output_directory(binary_handler_profile_rocprof_compute):
                 "app_1",
                 gpumodel,
             )
-            #assert os.path.exists(workload_dir)
+            # assert os.path.exists(workload_dir)
             test_utils.clean_output_dir(config["cleanup"], workload_dir)
             os.chdir("..")
 
@@ -999,7 +1000,10 @@ def test_output_directory(binary_handler_profile_rocprof_compute):
 
             # With no name and output directory
             error_code = binary_handler_profile_rocprof_compute(
-                config, skip_app_name=True, default_workload_dir=workload_base_dir, check_success=False
+                config,
+                skip_app_name=True,
+                default_workload_dir=workload_base_dir,
+                check_success=False,
             )
             assert error_code == 1
 
