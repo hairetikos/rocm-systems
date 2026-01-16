@@ -753,6 +753,11 @@ hipError_t hipGraphicsResourceGetMappedPointer(void** devPtr, size_t* size,
 hipError_t hipGraphicsUnmapResources(int count, hipGraphicsResource_t* resources,
                                      hipStream_t stream) {
   HIP_INIT_API(hipGraphicsUnmapResources, count, resources, stream);
+
+  if (nullptr == resources) {
+    HIP_RETURN(hipErrorUnknown);
+  }
+
   if (!hip::isValid(stream)) {
     HIP_RETURN(hipErrorContextIsDestroyed);
   }
@@ -769,6 +774,16 @@ hipError_t hipGraphicsUnmapResources(int count, hipGraphicsResource_t* resources
   hipError_t err = hipSetInteropObjects(count, reinterpret_cast<void**>(resources), memObjects);
   if (err != hipSuccess) {
     HIP_RETURN(err);
+  }
+
+  const amd::Context* amdContext = hip::getCurrentDevice()->asContext();
+  const amd::Device* curDev = amdContext->devices()[0];
+
+  for (const auto& mobj : memObjects) {
+    device::Memory* mem = reinterpret_cast<device::Memory*>(mobj->getDeviceMemory(*curDev));
+    if (!amd::MemObjMap::FindMemObj(reinterpret_cast<void*>(mem->virtualAddress()))) {
+      HIP_RETURN(hipErrorNotMapped);
+    }
   }
 
   amd::Command::EventWaitList nullWaitList;
@@ -791,10 +806,6 @@ hipError_t hipGraphicsUnmapResources(int count, hipGraphicsResource_t* resources
   if (as_cl(&command->event()) == nullptr) {
     command->release();
   }
-
-  amd::Context* amdContext = hip::getCurrentDevice()->asContext();
-  const auto it = amdContext->devices().cbegin();
-  amd::Device* curDev = *it;
 
   for (auto& mobj : memObjects) {
     device::Memory* mem = reinterpret_cast<device::Memory*>(mobj->getDeviceMemory(*curDev));
