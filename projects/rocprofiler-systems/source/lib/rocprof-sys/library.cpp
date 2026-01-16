@@ -1081,6 +1081,9 @@ rocprofsys_finalize_hidden(void)
                          get_perfetto_output_filename().c_str());
     }
 
+    // Apply pending pop adjustment for threads that were killed before calling stop()
+    _pop_count += tracing::pending_pop_adjustment().load();
+
     ROCPROFSYS_CI_THROW(
         _push_count > _pop_count &&
             !get_env("ROCPROFSYS_CI_SKIP_PUSH_POP_CHECK", false, false),

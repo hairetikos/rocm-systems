@@ -229,6 +229,17 @@ pop_count()
     return _v;
 }
 
+// Tracks pending pop_count adjustments for threads that are killed while
+// in blocking calls (e.g., HSA wait functions). This is incremented when
+// a tracing_count region is started, and decremented when stopped.
+// During finalization, this value is added to pop_count().
+inline auto&
+pending_pop_adjustment()
+{
+    static std::atomic<size_t> _v{ 0 };
+    return _v;
+}
+
 struct category_stack
 {
     int32_t profile = 0;  // use signed so compiler doesn't have to

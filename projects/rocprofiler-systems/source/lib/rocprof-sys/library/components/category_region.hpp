@@ -36,6 +36,7 @@
 #include "library/tracing/annotation.hpp"
 
 #include <map>
+#include <set>
 #include <thread>
 #include <timemory/components/gotcha/backends.hpp>
 #include <timemory/hash/types.hpp>
@@ -276,6 +277,9 @@ category_region<CategoryT>::start(std::string_view name, Args&&... args)
     if constexpr(is_one_of<CategoryT, tracing_count_categories_t>::value)
     {
         ++tracing::push_count();
+        // Increment pending adjustment - will be applied if thread is killed
+        // before stop() is called (e.g., blocked in HSA wait functions)
+        ++tracing::pending_pop_adjustment();
     }
 
     auto _hash = tim::add_hash_id(name);
@@ -335,14 +339,18 @@ category_region<CategoryT>::stop(std::string_view name, Args&&... args)
         category_name, process::get_id(), std::to_string(get_state()).c_str(),
         std::to_string(get_thread_state()).c_str(), name.data());
 
-    // only execute when active
+    // Increment pop_count outside state check to maintain symmetry with start().
+    // This ensures the count is balanced even if state changes between start/stop.
+    if constexpr(is_one_of<CategoryT, tracing_count_categories_t>::value)
+    {
+        ++tracing::pop_count();
+        // Decrement pending adjustment since stop() was called normally
+        --tracing::pending_pop_adjustment();
+    }
+
+    // only execute tracing operations when active
     if(get_state() == State::Active)
     {
-        if constexpr(is_one_of<CategoryT, tracing_count_categories_t>::value)
-        {
-            ++tracing::pop_count();
-        }
-
         if constexpr(_ct_use_perfetto)
         {
             if(get_use_perfetto())
