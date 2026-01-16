@@ -5491,12 +5491,35 @@ class AMDSMICommands():
             self.helpers.check_required_groups(check_render=True, check_video=False)
             self.group_check_printed = True
 
-        # Handle multiple GPUs
-        handled_multiple_gpus, device_handle = self.helpers.handle_gpus(args, self.logger, self.reset)
-        if handled_multiple_gpus:
-            return # This function is recursive
+        # Mode-1 gpureset is hive-wide, so reset only once if all GPUs are same ASIC
+        reset_all_gpus = None
+        single_hive = False
+        if args.gpureset and isinstance(args.gpu, list) and len(args.gpu) > 1:
+            # Check if all GPUs are the same ASIC type
+            asic_types = set()
+            for gpu in args.gpu:
+                try:
+                    asic_info = amdsmi_interface.amdsmi_get_gpu_asic_info(gpu)
+                    if isinstance(asic_info, dict):
+                        # Use market_name or asic_serial as identifier
+                        asic_id = asic_info.get('market_name', asic_info.get('asic_serial', None))
+                        if asic_id:
+                            asic_types.add(asic_id)
+                except:
+                    pass
+            # If all GPUs are same ASIC type, they're in same hive
+            if len(asic_types) == 1:
+                single_hive = True
+                reset_all_gpus = args.gpu
+                args.gpu = reset_all_gpus[0]
 
-        args.gpu = device_handle
+        # For gpureset with same ASIC, skip iteration.
+        if not (args.gpureset and single_hive):
+            # Handle multiple GPUs
+            handled_multiple_gpus, device_handle = self.helpers.handle_gpus(args, self.logger, self.reset)
+            if handled_multiple_gpus:
+                return # This function is recursive
+            args.gpu = device_handle
 
         # Get gpu_id for logging
         gpu_id = self.helpers.get_gpu_id_from_device_handle(args.gpu)
