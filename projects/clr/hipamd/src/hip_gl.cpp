@@ -811,12 +811,29 @@ hipError_t hipGraphicsUnregisterResource(hipGraphicsResource_t resource) {
   if (resource == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  reinterpret_cast<amd::BufferGL*>(resource)->release();
+
+  {
+    amd::ScopedLock lock(g_registeredGraphicsResourcesLock);
+    if (!g_registeredGraphicsResources.contains(reinterpret_cast<hipGraphicsResource*>(resource))) {
+      HIP_RETURN(hipErrorInvalidResourceHandle);
+    }
+  }
+
+  amd::Memory* amdMem = reinterpret_cast<amd::Memory*>(resource);
+  amd::Context* amdContext = hip::getCurrentDevice()->asContext();
+  device::Memory* mem =
+      reinterpret_cast<device::Memory*>(amdMem->getDeviceMemory(*amdContext->devices()[0]));
+
+  if (amd::MemObjMap::FindMemObj(reinterpret_cast<void*>(mem->virtualAddress()))) {
+    HIP_RETURN(hipErrorAlreadyMapped);
+  }
 
   {
     amd::ScopedLock lock(g_registeredGraphicsResourcesLock);
     g_registeredGraphicsResources.erase(reinterpret_cast<hipGraphicsResource*>(resource));
   }
+
+  amdMem->release();
 
   HIP_RETURN(hipSuccess);
 }
