@@ -343,18 +343,22 @@ category_region<CategoryT>::stop(std::string_view name, Args&&... args)
                   std::to_string(get_thread_state()), name.data());
     }
 
-    // Increment pop_count outside state check to maintain symmetry with start().
-    // This ensures the count is balanced even if state changes between start/stop.
+    // Decrement pending adjustment unconditionally since stop() was called.
+    // This ensures the pending adjustment only accounts for threads that never
+    // called stop() (e.g., killed while blocked in HSA functions).
     if constexpr(is_one_of<CategoryT, tracing_count_categories_t>::value)
     {
-        ++tracing::pop_count();
-        // Decrement pending adjustment since stop() was called normally
         --tracing::pending_pop_adjustment();
     }
 
-    // only execute tracing operations when active
+    // only execute when active (preserves original behavior for pop_count)
     if(get_state() == State::Active)
     {
+        if constexpr(is_one_of<CategoryT, tracing_count_categories_t>::value)
+        {
+            ++tracing::pop_count();
+        }
+
         if constexpr(_ct_use_perfetto)
         {
             if(get_use_perfetto())

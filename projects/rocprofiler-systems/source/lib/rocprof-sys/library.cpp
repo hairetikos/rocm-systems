@@ -1106,7 +1106,7 @@ rocprofsys_finalize_hidden(void)
             _push_count, _pop_count));
     }
 
-    debug::close_file();
+    // debug::close_file();
     config::finalize();
 
     LOG_DEBUG("Finalized: {}", _finalization.as_string());
