@@ -792,6 +792,10 @@ hipError_t hipGraphicsUnmapResources(int count, hipGraphicsResource_t* resources
     command->release();
   }
 
+  amd::Context* amdContext = hip::getCurrentDevice()->asContext();
+  const auto it = amdContext->devices().cbegin();
+  amd::Device* curDev = *it;
+
   for (auto& mobj : memObjects) {
     device::Memory* mem = reinterpret_cast<device::Memory*>(mobj->getDeviceMemory(*curDev));
     amd::MemObjMap::RemoveMemObj(reinterpret_cast<void*>(mem->virtualAddress()));
