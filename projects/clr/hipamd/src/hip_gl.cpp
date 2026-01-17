@@ -814,7 +814,7 @@ hipError_t hipGraphicsUnregisterResource(hipGraphicsResource_t resource) {
 
   {
     amd::ScopedLock lock(g_registeredGraphicsResourcesLock);
-    if (!g_registeredGraphicsResources.contains(reinterpret_cast<hipGraphicsResource*>(resource))) {
+    if (g_registeredGraphicsResources.count(reinterpret_cast<hipGraphicsResource*>(resource)) == 0) {
       HIP_RETURN(hipErrorInvalidResourceHandle);
     }
   }
