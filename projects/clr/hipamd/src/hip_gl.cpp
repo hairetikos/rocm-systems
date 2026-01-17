@@ -83,7 +83,7 @@ static inline hipError_t hipSetInteropObjects(int num_objects, void** mem_object
 
     {
       amd::ScopedLock lock(g_registeredGraphicsResourcesLock);
-      if (!g_registeredGraphicsResources.contains(reinterpret_cast<hipGraphicsResource*>(obj))) {
+      if (g_registeredGraphicsResources.count(reinterpret_cast<hipGraphicsResource*>(obj)) == 0) {
         return hipErrorInvalidResourceHandle;
       }
     }
