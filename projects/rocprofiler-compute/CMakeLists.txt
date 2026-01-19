@@ -388,6 +388,14 @@ add_test(
         tests/test_profile_general.py ${WORKING_DIR_OPTION}
 )
 
+add_test(
+    NAME test_profile_multi_rank
+    COMMAND
+        ${PYTHON_TEST_COMMAND} -m pytest -s -m multi_rank
+        --junitxml=tests/test_profile_multi_rank.xml ${COV_OPTION}
+        tests/test_profile_general.py ${WORKING_DIR_OPTION}
+)
+
 set_tests_properties(
     test_profile_kernel_execution
     test_profile_dispatch
@@ -405,6 +413,7 @@ set_tests_properties(
     test_profile_iteration_multiplexing_1
     test_profile_iteration_multiplexing_2
     test_profile_iteration_multiplexing_stochastic
+    test_profile_multi_rank
     PROPERTIES LABELS "profile" RESOURCE_GROUPS gpus:1 TIMEOUT 1800
 )
 
