@@ -280,12 +280,12 @@ int main(int argc, char *argv[]) {
     // Number of simulation sizes should be small, so std::size_t to int conversion should be safe
     for (int i = 0; i < n_sizes.size(); i++){
       // Send data to left node
-      MPI_Isend(&d_U_olds[i][n_sizes[i]], n_sizes[i], MPI_INT, left, 2*i, MPI_COMM_WORLD, &requests[4*i]);
-      MPI_Irecv(&d_U_olds[i][n_sizes[i]*n_sizes[i]], n_sizes[i], MPI_INT, right, 2*i, MPI_COMM_WORLD, &requests[4*i+1]);
+      MPI_Isend(&d_U_olds[i][n_sizes[i]], n_sizes[i], MPI_FLOAT, left, 2*i, MPI_COMM_WORLD, &requests[4*i]);
+      MPI_Irecv(&d_U_olds[i][n_sizes[i]*n_sizes[i]], n_sizes[i], MPI_FLOAT, right, 2*i, MPI_COMM_WORLD, &requests[4*i+1]);
 
       // Send data to right node
-      MPI_Isend(&d_U_olds[i][n_sizes[i]*(n_sizes[i]+1)], n_sizes[i], MPI_INT, right, 2*i+1, MPI_COMM_WORLD, &requests[4*i+2]);
-      MPI_Irecv(&d_U_olds[i][0], n_sizes[i], MPI_INT, left, 2*i+1, MPI_COMM_WORLD, &requests[4*i+3]);
+      MPI_Isend(&d_U_olds[i][n_sizes[i]*(n_sizes[i]+1)], n_sizes[i], MPI_FLOAT, right, 2*i+1, MPI_COMM_WORLD, &requests[4*i+2]);
+      MPI_Irecv(&d_U_olds[i][0], n_sizes[i], MPI_FLOAT, left, 2*i+1, MPI_COMM_WORLD, &requests[4*i+3]);
     }
 
     MPI_Waitall(num_requests, requests.data(), MPI_STATUSES_IGNORE);
@@ -307,12 +307,12 @@ int main(int argc, char *argv[]) {
       std::vector<MPI_Request> requests(4);
 
       // Send data to left node
-      MPI_Isend(&d_U_olds[i][n_sizes[i]], n_sizes[i], MPI_INT, left, 0, MPI_COMM_WORLD, &requests[0]);
-      MPI_Irecv(&d_U_olds[i][n_sizes[i]*n_sizes[i]], n_sizes[i], MPI_INT, right, 0, MPI_COMM_WORLD, &requests[1]);
+      MPI_Isend(&d_U_olds[i][n_sizes[i]], n_sizes[i], MPI_FLOAT, left, 0, MPI_COMM_WORLD, &requests[0]);
+      MPI_Irecv(&d_U_olds[i][n_sizes[i]*n_sizes[i]], n_sizes[i], MPI_FLOAT, right, 0, MPI_COMM_WORLD, &requests[1]);
 
       // Send data to right node
-      MPI_Isend(&d_U_olds[i][n_sizes[i]*(n_sizes[i]+1)], n_sizes[i], MPI_INT, right, 1, MPI_COMM_WORLD, &requests[2]);
-      MPI_Irecv(&d_U_olds[i][0], n_sizes[i], MPI_INT, left, 1, MPI_COMM_WORLD, &requests[3]);
+      MPI_Isend(&d_U_olds[i][n_sizes[i]*(n_sizes[i]+1)], n_sizes[i], MPI_FLOAT, right, 1, MPI_COMM_WORLD, &requests[2]);
+      MPI_Irecv(&d_U_olds[i][0], n_sizes[i], MPI_FLOAT, left, 1, MPI_COMM_WORLD, &requests[3]);
 
       MPI_Waitall(4, requests.data(), MPI_STATUSES_IGNORE);
     #endif // USE_MPI
