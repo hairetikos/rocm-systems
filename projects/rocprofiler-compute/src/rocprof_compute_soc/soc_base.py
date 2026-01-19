@@ -701,6 +701,8 @@ class OmniSoC_Base:
                 )
                 return
 
+            self.roofline_obj.set_workload_dir(self.get_args().path)
+
             self.roofline_obj.post_processing()
 
     @abstractmethod
