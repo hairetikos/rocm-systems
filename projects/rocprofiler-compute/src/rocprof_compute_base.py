@@ -50,14 +50,14 @@ from utils.specs import MachineSpecs, generate_machine_specs
 from utils.utils import (
     detect_rocprof,
     get_panel_alias,
+    get_rank,
     get_submodules,
     get_version,
     get_version_display,
     parse_sets_yaml,
-    set_locale_encoding,
-    get_rank,
-    replace_rank,
     replace_env,
+    replace_rank,
+    set_locale_encoding,
 )
 
 
@@ -209,9 +209,7 @@ class RocProfCompute:
         self.__args.path = replace_rank(self.__args.path)
 
         if add_rank:
-            self.__args.path = str(
-                Path(self.__args.path) / f"{get_rank()}"
-            )
+            self.__args.path = str(Path(self.__args.path) / f"{get_rank()}")
 
     @demarcate
     def load_soc_specs(self, sysinfo: Optional[dict] = None) -> None:
@@ -450,7 +448,7 @@ class RocProfCompute:
 
         if self.__args.subpath != "gpu_model":
             console_warning(
-                f"--subpath is deprecated and will be removed in future releases."
+                "--subpath is deprecated and will be removed in future releases."
             )
 
         if self.__args.name is not None and "/" in self.__args.name:
