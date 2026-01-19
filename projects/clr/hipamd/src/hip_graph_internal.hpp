@@ -868,7 +868,7 @@ class Graph {
   void DecrementMemAllocNodeCount() { memalloc_nodes_--; }
   //! returns device object
   hip::Device* Device() { return device_; }
-
+  bool IsLeafNodeSyncRequired() const { return leafNodeCount_ > 1; }
  protected:
   int max_streams_ = 0;  //!< Maximum number of streams used in the graph launch
   //!< Maps stream ID to the set of device IDs that use that stream.
@@ -947,6 +947,7 @@ class Graph {
   };
 
   std::vector<Batch> batches_;
+  size_t leafNodeCount_ = 0;
 };
 
 class GraphExec : public amd::ReferenceCountedObject, public Graph {
@@ -1023,7 +1024,7 @@ class GraphExec : public amd::ReferenceCountedObject, public Graph {
                                       const std::vector<hip::Stream*>& streams,
                                       hipError_t* out_status = nullptr);
   hipError_t EnqueueSegment(const Segment& segment, hip::Stream* stream,
-                            amd::AccumulateCommand* accumulate);
+                            amd::AccumulateCommand* accumulate, bool* out_needs_hw_event);
 
   bool TopologicalOrder() { return Graph::TopologicalOrder(topoOrder_); }
   //! Update streams for the graph execution with launch stream from application

@@ -1015,6 +1015,7 @@ uint64_t VirtualGPU::getQueueID() {
   if (gpu_queue_ == nullptr) {
     gpu_queue_ = roc_device_.AcquireActiveNormalQueue();
   }
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Queue ID: %" PRIu64, gpu_queue_->id);
   return gpu_queue_->id;
 }
 
@@ -1477,7 +1478,7 @@ bool VirtualGPU::dispatchGenericAqlPacketBatch(const std::vector<AqlPacket*>& pa
 // ================================================================================================
 bool VirtualGPU::dispatchAqlPacketBatch(const std::vector<uint8_t*>& packets,
                                         const std::vector<std::string>& kernelNames,
-                                        amd::AccumulateCommand* vcmd) {
+                                        amd::AccumulateCommand* vcmd, bool attach_signal) {
   if (vcmd == nullptr || packets.empty() || packets.size() != kernelNames.size()) {
     return false;
   }
@@ -1493,7 +1494,7 @@ bool VirtualGPU::dispatchAqlPacketBatch(const std::vector<uint8_t*>& packets,
   // Cast packets vector to AQL packets vector on the fly
   const auto& aqlPackets =
       reinterpret_cast<const std::vector<hsa_kernel_dispatch_packet_t*>&>(packets);
-  bool result = dispatchGenericAqlPacketBatch(aqlPackets, false, false, &kernelNames);
+  bool result = dispatchGenericAqlPacketBatch(aqlPackets, false, attach_signal, &kernelNames);
 
   profilingEnd();
 
@@ -2092,6 +2093,11 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
         }
       }
     }
+
+    for (auto it = command.getDepHwEvents().begin(); it < command.getDepHwEvents().end(); ++it) {
+      Barriers().AddExternalSignal(reinterpret_cast<ProfilingSignal*>(*it));
+    }
+    command.clearDepHwEvents();
   }
 }
 

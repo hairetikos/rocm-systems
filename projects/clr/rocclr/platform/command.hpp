@@ -96,7 +96,7 @@ class Event : public RuntimeObject {
   std::atomic<int32_t> event_entry_scope_;  //!< Command entry scope
                                             //!< 2 - system scope, 1 - device scope,
                                             //!< 0 - ignore, -1 - invalid
-
+  std::vector<void*> dep_hw_events_;  //!< Dependent HW events associated with SW event
  protected:
   static const EventWaitList nullWaitList;
 
@@ -229,6 +229,26 @@ class Event : public RuntimeObject {
   //! Set entry scope for the event
   void setCommandEntryScope(int32_t scope) {
     event_entry_scope_.store(scope, std::memory_order_relaxed);
+  }
+
+  //! Set dependent hardware events
+  void setDepHwEvents(std::vector<void*> hw_events) {
+    dep_hw_events_ = hw_events;
+  }
+
+  //! Get dependent hardware events
+  const std::vector<void*>& getDepHwEvents() const {
+    return dep_hw_events_;
+  }
+
+  //! Add a dependent hardware event
+  void addDepHwEvent(void* hw_event) {
+    dep_hw_events_.push_back(hw_event);
+  }
+
+  //! Clear dependent hardware events
+  void clearDepHwEvents() {
+    dep_hw_events_.clear();
   }
 };
 
