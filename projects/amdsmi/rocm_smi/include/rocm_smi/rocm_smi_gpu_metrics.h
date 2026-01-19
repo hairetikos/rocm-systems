@@ -1096,6 +1096,25 @@ enum class AMDGpuMetricsUnitType_t : AMDGpuMetricTypeId_t
   kMetricGfxBelowHostLimitTotalAcc,          // v1.8
   kMetricGfxLowUtilitizationAcc,             // v1.8
 
+  // New temperature unit types
+  kMetricTempMid,                        // v1.9+
+  kMetricTempAid,                        // v1.9+
+  kMetricTempXcd,                        // v1.9+
+
+  // New power/energy unit types
+  kMetricSocketPowerLimit,               // v1.9+
+  kMetricHbmEnergyAccumulator,           // v1.9+
+
+  // New clock unit types
+  kMetricGfxClkFreqLimit,                // v1.9+
+  kMetricGfxClkFreqAccumulator,          // v1.9+
+  kMetricCurrFClock,                     // v1.9+
+  kMetricCurrLClock,                     // v1.9+
+
+  // New bandwidth unit types
+  kMetricDramBandwidthAccumulator,       // v1.9+
+
+
 };
 using AMDGpuMetricsUnitTypeTranslationTbl_t = std::map<AMDGpuMetricsUnitType_t, std::string>;
 

@@ -292,6 +292,42 @@ const AMDGpuMetricsUnitTypeTranslationTbl_t amdgpu_metrics_unit_type_translation
   {AMDGpuMetricsUnitType_t::kMetricGfxBelowHostLimitTotalAcc, "GfxBelowHostLimitTotalAcc"},         /* v1.8 */
   {AMDGpuMetricsUnitType_t::kMetricGfxBelowHostLimitPptAcc, "GfxBelowHostLimitPptAcc"},             /* v1.8 */
   {AMDGpuMetricsUnitType_t::kMetricGfxBelowHostLimitThmAcc, "GfxBelowHostLimitThmAcc"},             /* v1.8 */
+
+  // New temperature unit types (v1.9+)
+  {AMDGpuMetricsUnitType_t::kMetricTempMid, "TempMid"},                                         /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricTempAid, "TempAid"},                                         /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricTempXcd, "TempXcd"},                                         /* v1.9+ */
+
+  // New power/energy unit types (v1.9+)
+  {AMDGpuMetricsUnitType_t::kMetricSocketPowerLimit, "SocketPowerLimit"},                       /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricHbmEnergyAccumulator, "HbmEnergyAccumulator"},               /* v1.9+ */
+
+  // New clock unit types (v1.9+)
+  {AMDGpuMetricsUnitType_t::kMetricGfxClkFreqLimit, "GfxClkFreqLimit"},                         /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricGfxClkFreqAccumulator, "GfxClkFreqAccumulator"},             /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricCurrFClock, "CurrFClock"},                                   /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricCurrLClock, "CurrLClock"},                                   /* v1.9+ */
+
+  // New bandwidth unit types (v1.9+)
+  {AMDGpuMetricsUnitType_t::kMetricDramBandwidthAccumulator, "DramBandwidthAccumulator"},       /* v1.9+ */
+
+  // New temperature unit types (v1.9+)
+  {AMDGpuMetricsUnitType_t::kMetricTempMid, "TempMid"},                                         /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricTempAid, "TempAid"},                                         /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricTempXcd, "TempXcd"},                                         /* v1.9+ */
+
+  // New power/energy unit types (v1.9+)
+  {AMDGpuMetricsUnitType_t::kMetricSocketPowerLimit, "SocketPowerLimit"},                       /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricHbmEnergyAccumulator, "HbmEnergyAccumulator"},               /* v1.9+ */
+
+  // New clock unit types (v1.9+)
+  {AMDGpuMetricsUnitType_t::kMetricGfxClkFreqLimit, "GfxClkFreqLimit"},                         /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricGfxClkFreqAccumulator, "GfxClkFreqAccumulator"},             /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricCurrFClock, "CurrFClock"},                                   /* v1.9+ */
+  {AMDGpuMetricsUnitType_t::kMetricCurrLClock, "CurrLClock"},                                   /* v1.9+ */
+
+  // New bandwidth unit types (v1.9+)
+  {AMDGpuMetricsUnitType_t::kMetricDramBandwidthAccumulator, "DramBandwidthAccumulator"},       /* v1.9+ */
 };
 
 
@@ -728,6 +764,56 @@ rsmi_status_t GpuMetricsBaseDynamic_t::populate_metrics_dynamic_tbl() {
       case details::AMDGpuMetricAttributeId_t::HBM_THM_RESIDENCY_ACC:
         emit(AMDGpuMetricsClassId_t::kGpuMetricThrottleResidency, AMDGpuMetricsUnitType_t::kMetricHBMThmResidencyAccumulator,
              "hbm_thm_residency_acc", r);
+        break;
+      case details::AMDGpuMetricAttributeId_t::TEMPERATURE_HBM:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricTemperature, AMDGpuMetricsUnitType_t::kMetricTempHbm,
+             "temperature_hbm", r);
+        break;
+      case details::AMDGpuMetricAttributeId_t::TEMPERATURE_MID:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricTemperature, AMDGpuMetricsUnitType_t::kMetricTempMid,
+             "temperature_mid", r);
+        break;
+      case details::AMDGpuMetricAttributeId_t::TEMPERATURE_AID:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricTemperature, AMDGpuMetricsUnitType_t::kMetricTempAid,
+             "temperature_aid", r);
+        break;
+      case details::AMDGpuMetricAttributeId_t::TEMPERATURE_XCD:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricTemperature, AMDGpuMetricsUnitType_t::kMetricTempXcd,
+             "temperature_xcd", r);
+        break;
+
+      // Power and energy metrics
+      case details::AMDGpuMetricAttributeId_t::SOCKET_POWER_LIMIT:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricPowerEnergy, AMDGpuMetricsUnitType_t::kMetricSocketPowerLimit,
+             "socket_power_limit", r);
+        break;
+      case details::AMDGpuMetricAttributeId_t::HBM_ENERGY_ACCUMULATOR:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricPowerEnergy, AMDGpuMetricsUnitType_t::kMetricHbmEnergyAccumulator,
+             "hbm_energy_accumulator", r);
+        break;
+
+      // Clock metrics
+      case details::AMDGpuMetricAttributeId_t::GFXCLK_FREQ_LIMIT:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricCurrentClock, AMDGpuMetricsUnitType_t::kMetricGfxClkFreqLimit,
+             "gfxclk_freq_limit", r);
+        break;
+      case details::AMDGpuMetricAttributeId_t::GFXCLK_FREQ_ACC:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricCurrentClock, AMDGpuMetricsUnitType_t::kMetricGfxClkFreqAccumulator,
+             "gfxclk_freq_acc", r);
+        break;
+      case details::AMDGpuMetricAttributeId_t::CURRENT_FCLK:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricCurrentClock, AMDGpuMetricsUnitType_t::kMetricCurrFClock,
+             "current_fclk", r);
+        break;
+      case details::AMDGpuMetricAttributeId_t::CURRENT_LCLK:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricCurrentClock, AMDGpuMetricsUnitType_t::kMetricCurrLClock,
+             "current_lclk", r);
+        break;
+
+      // Bandwidth metrics
+      case details::AMDGpuMetricAttributeId_t::DRAM_BANDWIDTH_ACC:
+        emit(AMDGpuMetricsClassId_t::kGpuMetricLinkWidthSpeed, AMDGpuMetricsUnitType_t::kMetricDramBandwidthAccumulator,
+             "dram_bandwidth_acc", r);
         break;
 
       // XCP stats
@@ -2209,6 +2295,7 @@ AMGpuMetricsPublicLatestTupl_t GpuMetricsBaseDynamic_t::copy_internal_to_externa
     using Dst = std::remove_reference_t<decltype(dst)>;
     using T = std::remove_cv_t<std::remove_extent_t<Dst>>;
     auto v = std::get_if<std::vector<T>>(&r.m_value);
+    if (!v) return;  // Not a vector type, skip
     const std::size_t n = std::min<std::size_t>(v->size(), cap);
     std::copy_n(v->data(), n, dst);
   };

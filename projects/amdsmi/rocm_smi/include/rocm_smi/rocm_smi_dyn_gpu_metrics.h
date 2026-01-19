@@ -161,6 +161,23 @@ enum class AMDGpuMetricAttributeId_t
     GFX_BELOW_HOST_LIMIT_THM_ACC,
     GFX_LOW_UTILIZATION_ACC,
     GFX_BELOW_HOST_LIMIT_TOTAL_ACC,
+    TEMPERATURE_HBM,
+    TEMPERATURE_MID,
+    TEMPERATURE_AID,
+    TEMPERATURE_XCD,
+    SOCKET_POWER_LIMIT,
+    HBM_ENERGY_ACCUMULATOR,
+    GFXCLK_FREQ_LIMIT,
+    DRAM_BANDWIDTH_ACC,
+    GFXCLK_FREQ_ACC,
+    CURRENT_FCLK,
+    CURRENT_LCLK,
+    /* Temperature metrics attributes for ID-based approach */
+    LABEL_VERSION,
+    NODE_ID,
+    NODE_TEMP,
+    VR_TEMP,
+    SYSTEM_TEMP,
 };
 
 struct AMDGpuDynamicTranslationTextInfo_t
@@ -223,6 +240,22 @@ static const auto AMDGpuMetricAttributeIdToString = AMDGpuMetricAttributeIdTrans
     {AMDGpuMetricAttributeId_t::GFX_BELOW_HOST_LIMIT_THM_ACC,     {"GFX_BELOW_HOST_LIMIT_THM_ACC",      "Accumulator for GFX below host limit due to thermal"}},
     {AMDGpuMetricAttributeId_t::GFX_LOW_UTILIZATION_ACC,          {"GFX_LOW_UTILIZATION_ACC",           "Accumulator for GFX low utilization"}},
     {AMDGpuMetricAttributeId_t::GFX_BELOW_HOST_LIMIT_TOTAL_ACC,   {"GFX_BELOW_HOST_LIMIT_TOTAL_ACC",    "Total accumulator for GFX below host limit"}},
+    {AMDGpuMetricAttributeId_t::TEMPERATURE_HBM,                  {"TEMPERATURE_HBM",                   "Temperature of High Bandwidth Memory"}},
+    {AMDGpuMetricAttributeId_t::TEMPERATURE_MID,                  {"TEMPERATURE_MID",                   "Mid-point temperature measurement"}},
+    {AMDGpuMetricAttributeId_t::TEMPERATURE_AID,                  {"TEMPERATURE_AID",                   "AID (Accelerated Instruction Decoder) temperature"}},
+    {AMDGpuMetricAttributeId_t::TEMPERATURE_XCD,                  {"TEMPERATURE_XCD",                   "XCD (Compute Die) temperature"}},
+    {AMDGpuMetricAttributeId_t::SOCKET_POWER_LIMIT,               {"SOCKET_POWER_LIMIT",                "Socket power limit in watts"}},
+    {AMDGpuMetricAttributeId_t::HBM_ENERGY_ACCUMULATOR,           {"HBM_ENERGY_ACCUMULATOR",            "High Bandwidth Memory energy accumulator in Joules"}},
+    {AMDGpuMetricAttributeId_t::GFXCLK_FREQ_LIMIT,                {"GFXCLK_FREQ_LIMIT",                 "GFX clock frequency limit in MHz"}},
+    {AMDGpuMetricAttributeId_t::DRAM_BANDWIDTH_ACC,               {"DRAM_BANDWIDTH_ACC",                "DRAM bandwidth accumulator"}},
+    {AMDGpuMetricAttributeId_t::GFXCLK_FREQ_ACC,                  {"GFXCLK_FREQ_ACC",                   "GFX clock frequency accumulator"}},
+    {AMDGpuMetricAttributeId_t::CURRENT_FCLK,                     {"CURRENT_FCLK",                      "Current FCLK frequency in MHz"}},
+    {AMDGpuMetricAttributeId_t::CURRENT_LCLK,                     {"CURRENT_LCLK",                      "Current LCLK frequency in MHz"}},
+    {AMDGpuMetricAttributeId_t::LABEL_VERSION,                    {"LABEL_VERSION",                     "Temperature label version"}},
+    {AMDGpuMetricAttributeId_t::NODE_ID,                          {"NODE_ID",                           "Node identifier for temperature metrics"}},
+    {AMDGpuMetricAttributeId_t::NODE_TEMP,                        {"NODE_TEMP",                         "Node temperature"}},
+    {AMDGpuMetricAttributeId_t::VR_TEMP,                          {"VR_TEMP",                           "Voltage Regulator temperature"}},
+    {AMDGpuMetricAttributeId_t::SYSTEM_TEMP,                      {"SYSTEM_TEMP",                       "System temperature"}},
 };
 
 
@@ -1134,6 +1167,166 @@ static const auto AMDGpuMetricsBaseSchema = details::AMDGpuMetricSchemaMapType_t
                                                    details::AMDGpuMetricAttributeId_t::GFX_BELOW_HOST_LIMIT_TOTAL_ACC,
                                                    details::AMDGpuMetricAttributeType_t::TYPE_UINT64,
                                                    details::AMDGpuMetricUnitType_t::PERCENT),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::TEMPERATURE_HBM,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("Temperature HBM",
+                                                   "Temperature of High Bandwidth Memory",
+                                                   details::AMDGpuMetricAttributeId_t::TEMPERATURE_HBM,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::CELSIUS),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::TEMPERATURE_MID,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("Temperature MID",
+                                                   "Mid-point temperature measurement",
+                                                   details::AMDGpuMetricAttributeId_t::TEMPERATURE_MID,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::CELSIUS),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::TEMPERATURE_AID,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("Temperature AID",
+                                                   "AID (Accelerated Instruction Decoder) temperature",
+                                                   details::AMDGpuMetricAttributeId_t::TEMPERATURE_AID,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::CELSIUS),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::TEMPERATURE_XCD,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("Temperature XCD",
+                                                   "XCD (Compute Die) temperature",
+                                                   details::AMDGpuMetricAttributeId_t::TEMPERATURE_XCD,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::CELSIUS),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::SOCKET_POWER_LIMIT,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("Socket Power Limit",
+                                                   "Socket power limit in watts",
+                                                   details::AMDGpuMetricAttributeId_t::SOCKET_POWER_LIMIT,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::WATT),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::HBM_ENERGY_ACCUMULATOR,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("HBM Energy Accumulator",
+                                                   "High Bandwidth Memory energy accumulator in Joules",
+                                                   details::AMDGpuMetricAttributeId_t::HBM_ENERGY_ACCUMULATOR,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT64,
+                                                   details::AMDGpuMetricUnitType_t::JOULE),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::GFXCLK_FREQ_LIMIT,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("GFXCLK Frequency Limit",
+                                                   "GFX clock frequency limit in MHz",
+                                                   details::AMDGpuMetricAttributeId_t::GFXCLK_FREQ_LIMIT,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::CLOCK_MEGAHERTZ),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::DRAM_BANDWIDTH_ACC,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("DRAM Bandwidth Accumulator",
+                                                   "DRAM bandwidth accumulator",
+                                                   details::AMDGpuMetricAttributeId_t::DRAM_BANDWIDTH_ACC,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT64,
+                                                   details::AMDGpuMetricUnitType_t::GIGABYTE_PER_SECOND_ACCUMULATOR),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::GFXCLK_FREQ_ACC,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("GFXCLK Frequency Accumulator",
+                                                   "GFX clock frequency accumulator",
+                                                   details::AMDGpuMetricAttributeId_t::GFXCLK_FREQ_ACC,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT64,
+                                                   details::AMDGpuMetricUnitType_t::COUNT_ACCUMULATOR),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::CURRENT_FCLK,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("Current FCLK",
+                                                   "Current FCLK frequency in MHz",
+                                                   details::AMDGpuMetricAttributeId_t::CURRENT_FCLK,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::CLOCK_MEGAHERTZ),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::CURRENT_LCLK,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("Current LCLK",
+                                                   "Current LCLK frequency in MHz",
+                                                   details::AMDGpuMetricAttributeId_t::CURRENT_LCLK,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::CLOCK_MEGAHERTZ),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::LABEL_VERSION,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("Label Version",
+                                                   "Temperature label version",
+                                                   details::AMDGpuMetricAttributeId_t::LABEL_VERSION,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT8,
+                                                   details::AMDGpuMetricUnitType_t::QUANTITY),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::NODE_ID,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("Node ID",
+                                                   "Node identifier for temperature metrics",
+                                                   details::AMDGpuMetricAttributeId_t::NODE_ID,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT8,
+                                                   details::AMDGpuMetricUnitType_t::QUANTITY),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::NODE_TEMP,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("Node Temperature",
+                                                   "Node temperature",
+                                                   details::AMDGpuMetricAttributeId_t::NODE_TEMP,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::CELSIUS),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::VR_TEMP,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("VR Temperature",
+                                                   "Voltage Regulator temperature",
+                                                   details::AMDGpuMetricAttributeId_t::VR_TEMP,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::CELSIUS),
+          static_cast<details::AMDGpuMetricAttributeValue_t>(0)
+      }},
+
+    { details::AMDGpuMetricAttributeId_t::SYSTEM_TEMP,
+      details::AMDGpuMetricAttributeData_t{
+          details::AMDGpuMetricAttributeInstance_t("System Temperature",
+                                                   "System temperature",
+                                                   details::AMDGpuMetricAttributeId_t::SYSTEM_TEMP,
+                                                   details::AMDGpuMetricAttributeType_t::TYPE_UINT16,
+                                                   details::AMDGpuMetricUnitType_t::CELSIUS),
           static_cast<details::AMDGpuMetricAttributeValue_t>(0)
       }}
 };
