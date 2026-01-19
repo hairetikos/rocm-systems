@@ -564,10 +564,46 @@ void KfdDriver::MakeKfdMemoryUnresident(const void *mem) {
   HSAKMT_CALL(hsaKmtUnmapMemoryToGPU(const_cast<void *>(mem)));
 }
 
+bool KfdDriver::GetXnackModeOverride(HSAint32* mode) {
+  assert(mode);
+  HsaSystemProperties sys_props;
+  HsaNodeProperties node_props;
+
+  if (HSAKMT_CALL(hsaKmtAcquireSystemProperties(&sys_props)) != HSAKMT_STATUS_SUCCESS) return false;
+
+  bool needs_override = false;
+
+  for (uint32_t node_id = 0; node_id < sys_props.NumNodes; node_id++) {
+    if (HSAKMT_CALL(hsaKmtGetNodeProperties(node_id, &node_props)) != HSAKMT_STATUS_SUCCESS)
+      continue;
+
+    if (node_props.NumFComputeCores > 0) {
+      /*
+       * For Renoir/Green Sardine (9.0.12), always disable retry for
+       * ROCm compatibility. Official ROCm builds for these APUs are
+       * compiled for XNACK-off and cannot load shaders when retry is
+       * enabled.
+       */
+      if (node_props.EngineId.ui32.Major == 9 && node_props.EngineId.ui32.Minor == 0 &&
+          node_props.EngineId.ui32.Stepping == 12) {
+        *mode = Flag::XNACK_DISABLE;
+        needs_override = true;
+        break;
+      }
+    }
+  }
+
+  return needs_override;
+}
+
 bool KfdDriver::BindXnackMode() {
   // Get users' preference for Xnack mode of ROCm platform.
   HSAint32 mode = core::Runtime::runtime_singleton_->flag().xnack();
   bool config_xnack = (mode != Flag::XNACK_REQUEST::XNACK_UNCHANGED);
+
+  // Check for any override due to GPU configuration
+  if (GetXnackModeOverride(&mode))
+    config_xnack = true;
 
   // Indicate to driver users' preference for Xnack mode
   // Call to driver can fail and is a supported feature

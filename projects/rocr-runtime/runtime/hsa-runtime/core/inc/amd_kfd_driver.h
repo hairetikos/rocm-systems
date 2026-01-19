@@ -165,6 +165,11 @@ public:
   /// Xnack functionality.
   static bool BindXnackMode();
 
+  /// @brief Check if xnack mode needs to be overridden based on GPU IP.
+  /// @param[in,out] mode Pointer to xnack mode. Will be modified to the override value if override is needed.
+  /// @return true if xnack mode should be overridden, false otherwise.
+  static bool GetXnackModeOverride(HSAint32* mode);
+
   // Minimum acceptable KFD version numbers.
   static const uint32_t kfd_version_major_min = 0;
   static const uint32_t kfd_version_minor_min = 99;
