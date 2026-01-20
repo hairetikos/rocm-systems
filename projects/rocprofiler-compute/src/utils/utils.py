@@ -841,6 +841,11 @@ def run_prof(
 
     new_env = os.environ.copy()
 
+    # Remove PMI / MPI-launcher vars inherited from outer mpirun/srun
+    for var in list(new_env.keys()):
+        if var.startswith(("PMI_", "PMIX_", "OMPI_", "MPIR_", "MPI_")):
+            new_env.pop(var, None)
+
     # Counter definitions
     with open(
         config.rocprof_compute_home
